@@ -1,0 +1,7 @@
+{
+  "$comment": "Read by the HopeLab Bench for its launch buttons. Trove is a web app, so it has no desktop or release section yet.",
+  "launch": [
+    { "name": "Web app", "command": ["dotnet", "run", "--project", "src/Trove.Web"], "default": true, "exclusive": true, "ports": [5317] },
+    { "name": "Tests", "command": ["dotnet", "test", "Trove.slnx"], "kind": "task" }
+  ]
+}

@@ -1,0 +1,64 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+Trove is a private, single-person media queue: what to read, watch, play and listen to (books in any format, YouTube
+from chosen creators, movies and TV, games, board games, and articles from CORA's reading list), with status, ownership
+and yearly goals. No social features. It is part of the HopeLab bench (`QuantumHope/HopeLab`), which launches it from
+`hopelab-app.json`.
+
+Today it is a shell: layout, navigation, placeholder screens and the shared themes. No database, sign-in or external
+APIs yet.
+
+## Commands
+
+```bash
+dotnet build Trove.slnx
+dotnet test Trove.slnx
+dotnet run --project src/Trove.Web     # http://localhost:5317
+```
+
+## Layout
+
+- `src/Trove.Web` is the ASP.NET Core server. It serves the Blazor web app and will host the API. It listens on
+  **localhost only** (`Urls` in `appsettings.json`); `tailscale serve` is the one way in and provides HTTPS, so there is
+  no HTTPS redirect. The PWA pieces (`manifest.webmanifest`, `service-worker.js`, `icon.svg`) are in its `wwwroot`.
+- `src/Trove.Web.Client` is the WebAssembly entry point. The whole app is interactive WebAssembly, prerendered on the
+  server.
+- `src/Trove.UI` is a Razor class library with every screen, the layout and the theming, so a MAUI Blazor Hybrid shell
+  can reuse it later. Put new screens and components here, not in the two host projects.
+- `tests/Trove.Tests` covers the theme catalog against the shared package, the layout with bUnit, and the server with
+  `WebApplicationFactory`.
+
+## Decisions already made
+
+These were settled with the user on Nov 25-26, 2026 (design page in the HopeLab channel, scope on HopeLab issue 16):
+
+- Its own repo, with its own schema in CORA's Postgres (one role and schema per service, as CORA's ADR-036 does).
+- Blazor PWA now, MAUI Blazor Hybrid later.
+- Trove is the source of truth; services are imports (Goodreads CSV, Audible CSV, Kindle page, ePub folder, Steam,
+  YouTube creators plus rules, CORA's reading list). Metadata from Open Library, TMDB, IGDB and the YouTube Data API.
+- Sign-in from the `Tailscale-User-Login` header that `tailscale serve` adds; refuse requests without it.
+- Status (Wishlist, Up next, In progress, Done, Dropped) is separate from ownership (copies). A book counts once in any
+  format.
+
+## Themes
+
+Trove wears the shared HopeLab themes from `MattEland.HopeLab.Themes` (0.1.*, like the other apps). That package is an
+Avalonia library, so it is restored by `build/HopeLabThemes`, a project of its own that nothing references, and
+`build/HopeLabThemes.targets` copies its `css/` folder into `src/Trove.UI/wwwroot/themes/` on every build (git-ignored).
+
+- Change a theme in `MattEland.HopeLab.Shared`, never in the copied CSS.
+- `src/Trove.UI/Theming/ThemeCatalog.cs` mirrors the package's catalog (which a web app can't load).
+  `ThemeCatalogTests` fails when the package gains, renames or drops a theme; update the list to match.
+- Style with the tokens (`--surface-*`, `--text-*`, `--accent-*`, `--border-*`, `--font-*`, `--type-*`, `--space-*`) in
+  `src/Trove.UI/wwwroot/trove.css`. Don't hard-code colours, or one of the 24 themes will break.
+- The choice is kept in `localStorage` (`trove.theme`) and applied by `theme.js` in `<head>` before first paint. The
+  default is the package's default (`dark`).
+- The themes name faces (Inter, JetBrains Mono, VT323 and others) that the package carries only inside its Avalonia
+  library, so the browser falls back to whatever the device has.
+
+## Screenshots
+
+Bring screenshots of every screen a change touches. `docs/screenshots/` holds the current set (desktop, a light theme,
+a styled dark theme, and phone width).
