@@ -22,65 +22,168 @@ h2 { font-size: var(--type-subheading-size); font-weight: var(--type-subheading-
 h1:focus { outline: none; }
 
 .trove-shell {
-    display: grid;
-    grid-template-columns: 200px 1fr;
-    grid-template-rows: auto 1fr;
-    grid-template-areas: "header header" "nav main";
+    display: flex;
+    flex-direction: column;
     min-height: 100vh;
 }
 
+/* The HopeLab header, as CORA draws it: brand, the main areas as a tab strip, the theme button on the right. */
 .trove-header {
-    grid-area: header;
+    position: sticky;
+    top: 0;
+    z-index: 50;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    align-items: stretch;
     gap: var(--space-md);
-    padding: var(--space-sm) var(--space-md);
+    min-height: 52px;
+    padding: 0 var(--space-md);
     background: var(--gradient-header);
     border-bottom: 1px solid var(--border-header);
 }
 
-.trove-brand { display: flex; align-items: center; gap: var(--space-sm); color: inherit; text-decoration: none; }
+.trove-brand { display: flex; align-items: center; gap: var(--space-sm); color: inherit; text-decoration: none; padding-right: var(--space-sm); }
 .trove-brand-mark { color: var(--accent-pink); font-size: var(--type-heading-size); }
 .trove-brand-name { font-family: var(--font-display); font-size: var(--type-heading-size); font-weight: var(--type-heading-weight); }
 
-.trove-theme-picker { display: flex; align-items: center; gap: var(--space-sm); font-size: var(--type-label-size); color: var(--text-secondary-dark); }
-.trove-theme-picker select {
-    background: var(--surface-panel);
-    color: var(--text-primary-dark);
-    border: 1px solid var(--border-input);
-    border-radius: 6px;
-    padding: var(--space-xs) var(--space-sm);
-    font: inherit;
-}
-
-.trove-nav {
-    grid-area: nav;
+.trove-topnav { display: flex; align-items: stretch; flex: 1 1 auto; min-width: 0; }
+.trove-topnav-tab {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: var(--space-xs);
-    padding: var(--space-md) var(--space-sm);
-    background: var(--gradient-sidebar);
-    border-right: 1px solid var(--border-subtle);
+    padding: 0 var(--space-lg);
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary-dark);
+    text-decoration: none;
+    font-family: var(--font-machine);
+    font-size: var(--type-label-size);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    white-space: nowrap;
+    transition: color 150ms ease, border-color 150ms ease;
+}
+.trove-topnav-tab:hover { color: var(--text-primary-dark); }
+.trove-topnav-tab.active { color: var(--accent-pink); border-bottom-color: var(--accent-pink); }
+.trove-topnav-tab .trove-nav-glyph { opacity: 0.85; }
+.trove-header-right { display: flex; align-items: center; gap: var(--space-sm); margin-left: auto; }
+
+/* The phone's bottom bar. Hidden from md up, where the header's strip is the navigation. */
+.trove-bottomnav { display: none; }
+
+/* The theme button and its menu (CORA's ThemeToggle). */
+.theme-toggle { position: relative; }
+.theme-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+    padding: var(--space-xs);
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    color: var(--text-secondary-dark);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+.theme-toggle-btn:hover { border-color: var(--text-secondary-dark); color: var(--text-primary-dark); }
+.theme-toggle-btn:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.theme-toggle-btn svg { width: 18px; height: 18px; }
+.theme-toggle-btn__ring { fill: none; stroke: currentColor; stroke-width: 1.6; }
+.theme-toggle-btn__fill { fill: currentColor; }
+.theme-toggle-backdrop { position: fixed; inset: 0; z-index: 60; }
+.theme-toggle-menu {
+    position: absolute;
+    top: calc(100% + var(--space-xs));
+    right: 0;
+    z-index: 61;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
-.trove-nav-link {
+/* The theme list (CORA's ThemeList), in the menu and on Settings. */
+.theme-list { display: flex; flex-direction: column; padding: var(--space-xs) 0; min-width: min(340px, calc(100vw - 32px)); }
+.theme-list__heading {
+    margin: var(--space-sm) var(--space-sm) var(--space-xs);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--border-subtle);
+    font-family: var(--font-machine);
+    font-size: var(--type-micro-size);
+    letter-spacing: 0.1em;
+    color: var(--text-machine);
+}
+.theme-list__option {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    padding: var(--space-sm) var(--space-md);
-    border-radius: 8px;
-    color: var(--text-secondary-dark);
-    text-decoration: none;
-    font-weight: var(--type-label-weight);
+    min-height: 44px;
+    padding: var(--space-xs) var(--space-sm);
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-primary-dark);
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
 }
-.trove-nav-link:hover { background: var(--surface-elevated); color: var(--text-primary-dark); }
-.trove-nav-link.active { background: var(--surface-elevated); color: var(--accent-pink); box-shadow: inset 3px 0 0 var(--accent-pink); }
-.trove-nav-glyph { width: 1.2em; text-align: center; }
+.theme-list__option:hover { background: color-mix(in srgb, var(--accent-purple) 8%, transparent); }
+.theme-list__option:focus-visible { outline: 2px solid var(--border-focus); outline-offset: -2px; }
+.theme-list__option--on {
+    border-color: color-mix(in srgb, var(--accent-purple) 50%, transparent);
+    background: color-mix(in srgb, var(--accent-purple) 12%, transparent);
+}
+.theme-list__system { position: relative; flex: none; width: 104px; height: 64px; }
+.theme-list__system > .theme-thumb { position: absolute; inset: 0; }
+.theme-list__system-dark { clip-path: polygon(55% 0, 100% 0, 100% 100%, 45% 100%); }
+.theme-list__text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.theme-list__name { font-family: var(--font-persona); font-size: var(--type-body-size); }
+.theme-list__description { font-size: var(--type-micro-size); color: var(--text-secondary-dark); }
+.theme-list__check { flex: none; width: 16px; height: 16px; fill: none; stroke: var(--accent-purple); stroke-width: 2; }
+.trove-settings-themes { border: 1px solid var(--border-subtle); border-radius: 4px; background: var(--surface-elevated); max-width: 480px; max-height: 460px; overflow-y: auto; }
+
+/* A theme's thumbnail (CORA's ThemeThumbnail). It carries data-theme, so these tokens are that theme's own. */
+.theme-thumb {
+    position: relative;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    width: 104px;
+    height: 64px;
+    overflow: hidden;
+    border-radius: 4px;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-void);
+    color: var(--text-primary-dark);
+}
+.theme-thumb__header { display: flex; align-items: center; gap: 4px; height: 11px; padding: 0 5px; background: var(--gradient-header); border-bottom: 1px solid var(--border-header); }
+.theme-thumb__brand { width: 9px; height: 5px; margin-right: auto; border-radius: 1px; background: var(--accent-yellow); }
+.theme-thumb__nav { width: 11px; height: 2px; background: var(--text-machine); opacity: 0.7; }
+.theme-thumb__nav--on { background: var(--accent-pink); opacity: 1; }
+.theme-thumb__body { display: flex; flex: 1; min-height: 0; }
+.theme-thumb__side { display: flex; flex-direction: column; gap: 4px; width: 26px; padding: 5px 4px; background: var(--gradient-sidebar); border-right: 1px solid var(--border-subtle); }
+.theme-thumb__line { height: 2px; background: var(--text-secondary-dark); opacity: 0.8; }
+.theme-thumb__line--short { width: 60%; }
+.theme-thumb__line--accent { height: 4px; background: transparent; border: 1px solid var(--accent-pink); opacity: 1; }
+.theme-thumb__main { position: relative; flex: 1; min-width: 0; }
+.theme-thumb__face { position: absolute; top: 5px; left: 50%; width: 26px; height: 33px; transform: translateX(-50%); }
+.theme-thumb__head { fill: var(--surface-mane); fill-opacity: 0.7; stroke: var(--surface-chrome); stroke-opacity: 0.45; stroke-width: 0.8; }
+.theme-thumb__seam { fill: none; stroke: var(--surface-chrome); stroke-opacity: 0.35; stroke-width: 0.6; }
+.theme-thumb__eye { fill: var(--surface-void); stroke: var(--surface-signature); stroke-width: 1; }
+.theme-thumb__mouth { fill: none; stroke: var(--surface-chrome); stroke-width: 1; }
+.theme-thumb__type { position: absolute; left: 5px; bottom: 3px; font-family: var(--font-display); font-size: 13px; line-height: 1; color: var(--text-primary-dark); }
+.theme-thumb__accents { position: absolute; right: 5px; bottom: 5px; display: flex; gap: 2px; }
+.theme-thumb__dot { width: 5px; height: 5px; border-radius: 50%; }
+.theme-thumb__dot--pink { background: var(--accent-pink); }
+.theme-thumb__dot--yellow { background: var(--accent-yellow); }
+.theme-thumb__dot--purple { background: var(--accent-purple); }
+.theme-thumb__dot--blue { background: var(--accent-blue); }
 
 .trove-main {
     min-width: 0;
-    grid-area: main;
+    flex: 1;
+    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: var(--space-lg);
@@ -121,8 +224,6 @@ h1:focus { outline: none; }
 }
 .trove-pill { font-family: var(--font-machine); font-size: var(--type-micro-size); }
 
-.trove-theme-list { margin: 0; padding-left: var(--space-md); display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-xs) var(--space-md); }
-.trove-theme-list span { color: var(--text-secondary-dark); }
 
 /* Buttons, banners, the board and the rating dialog. */
 .trove-button {
@@ -330,24 +431,47 @@ h1:focus { outline: none; }
 }
 #blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: var(--space-md); }
 
-/* Phone: the rail becomes a bottom bar, like an installed app. */
-@media (max-width: 700px) {
-    .trove-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; grid-template-areas: "header" "main" "nav"; }
-    .trove-nav {
+/* Below lg the tab strip drops its glyphs: the labels stay, since a glyph alone doesn't say where it goes. */
+@media (max-width: 1023px) {
+    .trove-topnav-tab { padding: 0 var(--space-md); }
+    .trove-topnav-tab .trove-nav-glyph { display: none; }
+}
+
+/* Phone (below md): the strip leaves the header and the same areas sit in a bar at the bottom, as in CORA. */
+@media (max-width: 767px) {
+    .trove-header { padding: 0 var(--space-sm); gap: var(--space-xs); }
+    .trove-topnav { display: none; }
+    .trove-bottomnav {
         position: sticky;
         bottom: 0;
-        flex-direction: row;
-        justify-content: space-around;
-        padding: var(--space-xs) var(--space-xs) calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
-        border-right: 0;
-        border-top: 1px solid var(--border-subtle);
-        background: var(--surface-sidebar);
+        z-index: 50;
+        display: flex;
+        background: var(--surface-header);
+        box-shadow: inset 0 1px 0 var(--border-header);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
     }
-    .trove-nav-link { flex-direction: column; gap: 2px; padding: var(--space-xs); font-size: var(--type-micro-size); }
-    .trove-nav-link.active { box-shadow: inset 0 3px 0 var(--accent-pink); }
-    .trove-nav-glyph { font-size: var(--type-subheading-size); }
+    .trove-bottomnav-tab {
+        flex: 1;
+        min-width: 0;
+        min-height: 56px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        padding: var(--space-xs) 2px;
+        color: var(--text-secondary-dark);
+        text-decoration: none;
+        font-family: var(--font-machine);
+        font-size: var(--type-micro-size);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+    .trove-bottomnav-tab.active { color: var(--accent-pink); }
+    .trove-bottomnav-tab .trove-nav-glyph { font-size: var(--type-subheading-size); }
+    .trove-bottomnav-tab .trove-nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .theme-toggle-menu { position: fixed; top: 56px; right: var(--space-sm); left: var(--space-sm); }
     .trove-main { padding: var(--space-md); }
-    .trove-theme-picker-label { display: none; }
     .trove-row { flex-direction: column; align-items: flex-start; }
     .trove-tabs { display: flex; gap: var(--space-xs); overflow-x: auto; padding-bottom: 2px; }
     .trove-tab {

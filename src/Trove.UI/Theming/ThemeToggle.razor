@@ -1,0 +1,71 @@
+@inject IJSRuntime Js
+
+@* The header's theme button, as in CORA: an icon that opens the theme list. The choice applies at once and is kept
+   in this browser. *@
+<div class="theme-toggle">
+    <button type="button" class="theme-toggle-btn" aria-haspopup="true" aria-expanded="@(open ? "true" : "false")"
+            aria-label="Theme: @label. Choose a theme" title="Theme: @label" @onclick="ToggleAsync" @ref="button">
+        @if (preference == ThemePreference.System)
+        {
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" class="theme-toggle-btn__ring" /><path d="M12 4 A8 8 0 0 1 12 20 Z" class="theme-toggle-btn__fill" /></svg>
+        }
+        else
+        {
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path class="theme-toggle-btn__ring" d="M12 3.5a8.5 8.5 0 1 0 0 17c1.1 0 1.7-.8 1.7-1.6 0-.5-.2-.8-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6h2a4.7 4.7 0 0 0 4.7-4.7C21 6.8 17 3.5 12 3.5Z" /><circle cx="7.5" cy="11" r="1.3" class="theme-toggle-btn__fill" /><circle cx="10" cy="7.3" r="1.3" class="theme-toggle-btn__fill" /><circle cx="14.5" cy="7.3" r="1.3" class="theme-toggle-btn__fill" /><circle cx="17" cy="11" r="1.3" class="theme-toggle-btn__fill" /></svg>
+        }
+    </button>
+    @if (open)
+    {
+        <div class="theme-toggle-backdrop" @onclick="CloseAsync"></div>
+        <div class="theme-toggle-menu">
+            <ThemeList FocusOnOpen="true" OnChanged="Changed" OnPicked="CloseAsync" OnEscape="CloseAsync" />
+        </div>
+    }
+</div>
+
+@code {
+    private ElementReference button;
+    private bool open;
+    private string preference = ThemePreference.System;
+    private bool systemDark = true;
+    private string label = "System";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        preference = ThemePreference.Read(await Js.InvokeAsync<string?>("trove.theme.get"));
+        systemDark = await Js.InvokeAsync<bool>("trove.theme.systemDark");
+        label = ThemePreference.Label(preference, systemDark);
+        StateHasChanged();
+    }
+
+    private void Changed(string value)
+    {
+        preference = value;
+        label = ThemePreference.Label(value, systemDark);
+    }
+
+    private async Task ToggleAsync()
+    {
+        if (open)
+        {
+            await CloseAsync();
+            return;
+        }
+
+        systemDark = await Js.InvokeAsync<bool>("trove.theme.systemDark");
+        label = ThemePreference.Label(preference, systemDark);
+        open = true;
+    }
+
+    private async Task CloseAsync()
+    {
+        open = false;
+        StateHasChanged();
+        await button.FocusAsync();
+    }
+}

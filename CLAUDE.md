@@ -63,8 +63,11 @@ Avalonia library, so it is restored by `build/HopeLabThemes`, a project of its o
   `ThemeCatalogTests` fails when the package gains, renames or drops a theme; update the list to match.
 - Style with the tokens (`--surface-*`, `--text-*`, `--accent-*`, `--border-*`, `--font-*`, `--type-*`, `--space-*`) in
   `src/Trove.UI/wwwroot/trove.css`. Don't hard-code colours, or one of the 24 themes will break.
-- The choice is kept in `localStorage` (`trove.theme`) and applied by `theme.js` in `<head>` before first paint. The
-  default is the package's default (`dark`).
+- The shell and picker follow CORA's: the main areas as a tab strip in the header (a bottom bar below 768px), and a
+  theme button that opens the theme list (System, then light themes, then dark, each with a thumbnail drawn in its own
+  `data-theme`). `ThemePreference.cs` holds the rules; `ThemeToggle`, `ThemeList` and `ThemeThumbnail` draw them.
+- The choice is kept in `localStorage` (`trove.theme`; nothing stored means System, which follows the device between
+  Light and Dark) and applied by `theme.js` in `<head>` before first paint.
 - The themes name faces (Inter, JetBrains Mono, VT323 and others) that the package carries only inside its Avalonia
   library, so the browser falls back to whatever the device has.
 

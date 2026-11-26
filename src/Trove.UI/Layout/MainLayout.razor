@@ -1,27 +1,40 @@
 @inherits LayoutComponentBase
 
+@* The HopeLab shell, as CORA lays it out: the header carries the brand, the main areas as a tab strip and the theme
+   button; on a phone the same areas move to a bar at the bottom. One list, two presentations, one ever visible. *@
 <div class="trove-shell">
     <header class="trove-header">
         <a class="trove-brand" href="">
             <span class="trove-brand-mark" aria-hidden="true">◆</span>
             <span class="trove-brand-name">Trove</span>
         </a>
-        <ThemePicker />
+        <nav class="trove-topnav" aria-label="Primary">
+            @foreach (var area in NavArea.All)
+            {
+                <NavLink class="trove-topnav-tab" href="@area.Href" Match="@Match(area)" title="@area.Summary">
+                    <span class="trove-nav-glyph" aria-hidden="true">@area.Glyph</span>
+                    <span class="trove-nav-label">@area.Title</span>
+                </NavLink>
+            }
+        </nav>
+        <div class="trove-header-right">
+            <ThemeToggle />
+        </div>
     </header>
 
-    <nav class="trove-nav" aria-label="Main">
+    <main class="trove-main">
+        @Body
+    </main>
+
+    <nav class="trove-bottomnav" aria-label="Primary">
         @foreach (var area in NavArea.All)
         {
-            <NavLink class="trove-nav-link" href="@area.Href" Match="@(area.Href.Length == 0 ? NavLinkMatch.All : NavLinkMatch.Prefix)" title="@area.Summary">
+            <NavLink class="trove-bottomnav-tab" href="@area.Href" Match="@Match(area)">
                 <span class="trove-nav-glyph" aria-hidden="true">@area.Glyph</span>
                 <span class="trove-nav-label">@area.Title</span>
             </NavLink>
         }
     </nav>
-
-    <main class="trove-main">
-        @Body
-    </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -29,3 +42,7 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private static NavLinkMatch Match(NavArea area) => area.Href.Length == 0 ? NavLinkMatch.All : NavLinkMatch.Prefix;
+}
