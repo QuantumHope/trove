@@ -4,38 +4,52 @@
 
 <PageTitle>Full playthroughs · Trove</PageTitle>
 
-<h1>Full playthroughs</h1>
-<p class="trove-lead">Full-game videos from the YouTube channels you follow. Series split into parts are left out.</p>
-
 @if (Board is null)
 {
+    <h1>Full playthroughs</h1>
     <p class="trove-empty">Loading…</p>
     return;
 }
 
-<div class="trove-sync">
-    <span>From @string.Join(", ", Board.Sync.Channels)</span>
-    <span class="trove-sync-when">@SyncLine</span>
-    <button type="button" class="trove-button" disabled="@(syncing || !Board.Sync.HasApiKey)" @onclick="SyncAsync">@(syncing ? "Syncing…" : "Sync now")</button>
-</div>
+<header class="trove-page-header">
+    <div class="trove-page-heading">
+        <h1>Full playthroughs</h1>
+        <p class="trove-lead">
+            Complete games from
+            @for (var i = 0; i < Board.Sync.Channels.Count; i++)
+            {
+                var handle = Board.Sync.Channels[i];
+                @(i > 0 ? ", " : "")<a href="@YouTubeLinks.Channel(handle)" target="_blank" rel="noopener noreferrer">@handle</a>
+            }
+        </p>
+    </div>
+    <div class="trove-toolbar">
+        <span class="trove-sync-when">@SyncLine</span>
+        <button type="button" class="trove-button" disabled="@(syncing || !Board.Sync.HasApiKey)" @onclick="SyncAsync">@(syncing ? "Syncing…" : "Sync now")</button>
+        <button type="button" class="trove-button is-quiet trove-show-ignored" aria-pressed="@(showIgnored ? "true" : "false")" @onclick="() => showIgnored = !showIgnored">
+            Ignored <span class="trove-count">@Count(WatchState.Ignored)</span>
+        </button>
+    </div>
+</header>
 
 @if (!Board.Sync.HasApiKey)
 {
-    <div class="trove-card trove-notice">
-        <h2>Add a YouTube API key to fill the board</h2>
-        <p>Trove reads the channels with the YouTube Data API. Set the key on the computer that runs Trove, in user secrets:</p>
-        <pre><code>dotnet user-secrets set "YouTube:ApiKey" "your-key" --project src/Trove.Web</code></pre>
-        <p>Then restart Trove. The README has the steps for making a key.</p>
+    <div class="trove-banner">
+        <span>Add a YouTube API key to load videos.</span>
+        <a class="trove-button is-primary" href="settings">Add key</a>
     </div>
 }
 else if (Board.Sync.LastError is { } error)
 {
-    <p class="trove-card trove-notice is-error" role="alert">The last sync didn't finish. @error</p>
+    <div class="trove-banner is-error" role="alert">
+        <span>The last sync didn't finish. @error</span>
+        <a class="trove-button" href="settings">Check key</a>
+    </div>
 }
 
 @if (message is not null)
 {
-    <p class="trove-card trove-notice is-error" role="alert">@message</p>
+    <div class="trove-banner is-error" role="alert"><span>@message</span></div>
 }
 
 <div class="trove-tabs" role="tablist" aria-label="Columns">
@@ -51,10 +65,10 @@ else if (Board.Sync.LastError is { } error)
     @foreach (var state in VisibleColumns)
     {
         <div class="trove-video-column @(state == tab ? "is-current" : "")" aria-label="@state.Label()">
-            <h2>@state.Label() <span class="trove-count">@Count(state)</span></h2>
+            <h2 class="trove-column-head">@state.Label() <span class="trove-count-pill">@Count(state)</span></h2>
             @foreach (var video in Board.Videos.Where(v => v.State == state).OrderBy(v => Order(v)))
             {
-                <PlaythroughCard @key="video.VideoId" Video="video" Now="now" OnMove="MoveAsync" OnRate="RateAsync" />
+                <PlaythroughCard @key="video.VideoId" Video="video" Now="now" ShowChannel="@(Board.Sync.Channels.Count > 1)" OnMove="MoveAsync" OnRate="RateAsync" />
             }
             @if (Count(state) == 0)
             {
@@ -63,10 +77,6 @@ else if (Board.Sync.LastError is { } error)
         </div>
     }
 </section>
-
-<button type="button" class="trove-button trove-show-ignored" @onclick="() => showIgnored = !showIgnored">
-    @(showIgnored ? "Hide ignored" : $"Show ignored ({Count(WatchState.Ignored)})")
-</button>
 
 @if (rating is { } pending)
 {
@@ -102,10 +112,10 @@ else if (Board.Sync.LastError is { } error)
 
     private static string Empty(WatchState state) => state switch
     {
-        WatchState.New => "Nothing new. New full-game uploads land here.",
-        WatchState.WatchNext => "Move videos here to line them up.",
-        WatchState.InProgress => "Nothing on the go.",
-        WatchState.Done => "Nothing finished yet.",
+        WatchState.New => "New full-game uploads land here.",
+        WatchState.WatchNext => "Line up what to watch next.",
+        WatchState.InProgress => "Nothing in progress.",
+        WatchState.Done => "Finished videos land here.",
         _ => "Nothing ignored.",
     };
 

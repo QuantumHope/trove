@@ -23,6 +23,25 @@ namespace Trove.Web.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Trove.Web.Data.AppSettingRow", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("app_settings", "trove");
+                });
+
             modelBuilder.Entity("Trove.Web.Data.YouTubeChannelRow", b =>
                 {
                     b.Property<string>("ChannelId")

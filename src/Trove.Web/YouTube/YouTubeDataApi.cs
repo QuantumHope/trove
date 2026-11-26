@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using System.Xml;
-using Microsoft.Extensions.Options;
 
 namespace Trove.Web.YouTube;
 
@@ -10,14 +9,15 @@ namespace Trove.Web.YouTube;
 /// The few YouTube Data API v3 calls Trove needs. Each costs one unit of the free 10,000 a day, and a page holds 50
 /// videos, so reading a whole channel costs a few dozen units.
 /// </summary>
-public sealed class YouTubeDataApi(HttpClient http, IOptionsMonitor<YouTubeOptions> options)
+public sealed class YouTubeDataApi(HttpClient http, YouTubeKeyStore keys)
 {
     public static readonly Uri BaseAddress = new("https://www.googleapis.com/youtube/v3/");
 
-    public async Task<ChannelInfo?> FindChannelAsync(string handle, CancellationToken cancellationToken)
+    /// <summary>Looks a channel up by handle. <paramref name="apiKey"/> tries a key that isn't saved yet.</summary>
+    public async Task<ChannelInfo?> FindChannelAsync(string handle, CancellationToken cancellationToken, string? apiKey = null)
     {
         var response = await GetAsync<ListResponse<ChannelItem>>(
-            $"channels?part=snippet,contentDetails&forHandle={Uri.EscapeDataString(handle.TrimStart('@'))}", cancellationToken);
+            $"channels?part=snippet,contentDetails&forHandle={Uri.EscapeDataString(handle.TrimStart('@'))}", cancellationToken, apiKey);
         var channel = response.Items?.FirstOrDefault();
         return channel is null
             ? null
@@ -81,9 +81,9 @@ public sealed class YouTubeDataApi(HttpClient http, IOptionsMonitor<YouTubeOptio
         }
     }
 
-    private async Task<T> GetAsync<T>(string relative, CancellationToken cancellationToken)
+    private async Task<T> GetAsync<T>(string relative, CancellationToken cancellationToken, string? apiKey = null)
     {
-        var key = options.CurrentValue.ApiKey;
+        var key = apiKey ?? (await keys.GetAsync(cancellationToken)).Key;
         if (string.IsNullOrWhiteSpace(key))
         {
             throw new YouTubeApiException("No YouTube API key is set.");

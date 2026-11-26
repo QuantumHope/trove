@@ -1,16 +1,138 @@
 @page "/settings"
+@inject IYouTubeSettings YouTube
 
 <PageTitle>Settings · Trove</PageTitle>
 
 <h1>Settings</h1>
 
-<div class="trove-card">
-    <h2>Theme</h2>
-    <p>Trove wears the shared HopeLab themes, the same ones as CORA, OneRing and the Bench. Pick one in the header; it's kept in this browser.</p>
+<section class="trove-card trove-settings" aria-labelledby="youtube-heading">
+    <div class="trove-settings-head">
+        <h2 id="youtube-heading">YouTube</h2>
+        @if (View is not null)
+        {
+            <span class="trove-status @(View.Source == YouTubeKeySource.None ? "is-off" : "is-on")">@(View.Source == YouTubeKeySource.None ? "Not connected" : "Connected")</span>
+        }
+    </div>
+    <p class="trove-settings-text">
+        Trove reads channels with a YouTube Data API v3 key. It's free; you make one in Google Cloud.
+        <a href="@CreateKeyUrl" target="_blank" rel="noopener noreferrer">Get an API key</a>
+        <span aria-hidden="true">·</span>
+        <a href="@EnableApiUrl" target="_blank" rel="noopener noreferrer">Enable the YouTube API</a>
+    </p>
+
+    @if (View is not null)
+    {
+        <p class="trove-settings-source">@SourceLine</p>
+    }
+
+    <form class="trove-key-form" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+        <label for="youtube-key">API key</label>
+        <div class="trove-key-row">
+            <input id="youtube-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key" @bind="draft" @bind:event="oninput" disabled="@busy" />
+            <button type="submit" class="trove-button is-primary" disabled="@(busy || string.IsNullOrWhiteSpace(draft))">@(busy ? "Checking…" : "Save key")</button>
+            @if (View?.Source == YouTubeKeySource.Saved)
+            {
+                <button type="button" class="trove-button is-quiet" disabled="@busy" @onclick="RemoveAsync">Remove</button>
+            }
+        </div>
+        @if (error is not null)
+        {
+            <p class="trove-form-error" role="alert">@error</p>
+        }
+        else if (saved)
+        {
+            <p class="trove-form-ok" role="status">Key saved. Trove is loading your channels now. <a href="library/youtube">Go to the board</a></p>
+        }
+    </form>
+</section>
+
+<section class="trove-card" aria-labelledby="theme-heading">
+    <h2 id="theme-heading">Theme</h2>
+    <p class="trove-settings-text">Trove wears the shared HopeLab themes, the same ones as CORA, OneRing and the Bench. Pick one in the header; it's kept in this browser.</p>
     <ul class="trove-theme-list">
         @foreach (var theme in ThemeCatalog.All)
         {
             <li><strong>@theme.Name</strong> <span>@theme.Description</span></li>
         }
     </ul>
-</div>
+</section>
+
+@code {
+    private const string CreateKeyUrl = "https://console.cloud.google.com/apis/credentials";
+    private const string EnableApiUrl = "https://console.cloud.google.com/apis/library/youtube.googleapis.com";
+
+    private string draft = "";
+    private string? error;
+    private bool busy;
+    private bool saved;
+
+    [PersistentState] public YouTubeSettingsView? View { get; set; }
+
+    private string SourceLine => View switch
+    {
+        { Source: YouTubeKeySource.Saved, ConfigurationHasKey: true } => $"Using the key saved here (ending {View.KeyEnding}). It takes the place of the one in user secrets.",
+        { Source: YouTubeKeySource.Saved } => $"Using the key saved here, ending {View.KeyEnding}.",
+        { Source: YouTubeKeySource.Configuration } => $"Using the key from user secrets or the environment, ending {View.KeyEnding}. A key saved here takes its place.",
+        _ => "No key yet. Paste one below, or set YouTube:ApiKey in user secrets.",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            View ??= await YouTube.GetAsync();
+        }
+        catch (HttpRequestException)
+        {
+            error = "Trove couldn't load the YouTube settings.";
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        busy = true;
+        error = null;
+        saved = false;
+        try
+        {
+            var result = await YouTube.SaveKeyAsync(draft);
+            View = result.Settings;
+            if (result.Saved)
+            {
+                draft = "";
+                saved = true;
+            }
+            else
+            {
+                error = result.Error;
+            }
+        }
+        catch (HttpRequestException)
+        {
+            error = "Trove couldn't save the key. Try again.";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private async Task RemoveAsync()
+    {
+        busy = true;
+        error = null;
+        saved = false;
+        try
+        {
+            View = await YouTube.RemoveKeyAsync();
+        }
+        catch (HttpRequestException)
+        {
+            error = "Trove couldn't remove the key. Try again.";
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

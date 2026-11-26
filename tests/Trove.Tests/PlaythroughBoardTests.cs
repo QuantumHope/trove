@@ -22,10 +22,10 @@ public sealed class PlaythroughBoardTests : BunitContext
         page.Find("[data-video=a] select").Change(nameof(WatchState.Done));
 
         Assert.Empty(library.Moves);
-        Assert.Contains("How was it?", page.Find("[role=dialog]").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Rate it", page.Find("[role=dialog]").TextContent, StringComparison.Ordinal);
 
         page.Find("[role=dialog] .trove-stars").Click(new Microsoft.AspNetCore.Components.Web.MouseEventArgs { OffsetX = 90 });
-        page.FindAll("[role=dialog] button").Single(b => b.TextContent == "Mark done").Click();
+        page.FindAll("[role=dialog] button").Single(b => b.TextContent == "Save").Click();
 
         Assert.Equal(("a", new MoveRequest(WatchState.Done, 3.75m)), library.Moves.Single());
         Assert.Empty(page.FindAll("[role=dialog]"));
@@ -42,7 +42,7 @@ public sealed class PlaythroughBoardTests : BunitContext
         Assert.Empty(library.Moves);
 
         page.Find("[data-video=a] select").Change(nameof(WatchState.Done));
-        page.FindAll("[role=dialog] button").Single(b => b.TextContent == "Skip rating").Click();
+        page.FindAll("[role=dialog] button").Single(b => b.TextContent == "Skip").Click();
         Assert.Equal(("a", new MoveRequest(WatchState.Done, null)), library.Moves.Single());
     }
 

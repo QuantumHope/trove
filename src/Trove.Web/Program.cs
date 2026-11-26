@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Trove.Core.Playthroughs;
+using Trove.Core.Settings;
 using Trove.Web.Components;
 using Trove.Web.Data;
 using Trove.Web.Playthroughs;
@@ -14,10 +16,13 @@ builder.Services.AddTroveDatabase(builder.Configuration, builder.Environment);
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.Configure<YouTubeOptions>(builder.Configuration.GetSection(YouTubeOptions.Section));
+builder.Services.AddDataProtection().SetApplicationName("Trove");
+builder.Services.AddSingleton<YouTubeKeyStore>();
 builder.Services.AddHttpClient<YouTubeDataApi>();
 builder.Services.AddSingleton<YouTubeSync>();
 builder.Services.AddHostedService<YouTubeSyncWorker>();
 builder.Services.AddScoped<IPlaythroughLibrary, DbPlaythroughLibrary>();
+builder.Services.AddScoped<IYouTubeSettings, YouTubeSettingsService>();
 
 var app = builder.Build();
 
@@ -38,6 +43,7 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapPlaythroughApi();
+app.MapSettingsApi();
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(Trove.UI.Routes).Assembly);

@@ -21,14 +21,16 @@ Trove; it is never committed.
 2. Under **APIs & Services → Library**, enable **YouTube Data API v3**.
 3. Under **APIs & Services → Credentials**, choose **Create credentials → API key**. Restrict it to the YouTube Data
    API v3.
-4. Store it for Trove, in user secrets:
+4. Paste it into **Settings → YouTube** in Trove. Trove tries it against YouTube before saving it, keeps it encrypted
+   (ASP.NET Core Data Protection) and starts loading the channels straight away. Or set it outside the app, in user
+   secrets or the environment variable `YouTube__ApiKey`:
 
    ```bash
    dotnet user-secrets set "YouTube:ApiKey" "your-key" --project src/Trove.Web
    ```
 
-   or as the environment variable `YouTube__ApiKey`.
-5. Restart Trove. It syncs at start and every 6 hours (`YouTube:SyncInterval`); **Sync now** on the board runs one
+   A key saved in Settings takes the place of one in configuration.
+5. Trove syncs at start and every 6 hours (`YouTube:SyncInterval`); **Sync now** on the board runs one
    on demand.
 
 The channel list is `YouTube:Channels` in `src/Trove.Web/appsettings.json` (handles such as `@MKIceAndFire`).

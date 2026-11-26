@@ -19,6 +19,9 @@ public sealed record Playthrough(
 public static class YouTubeLinks
 {
     public static string Watch(string videoId) => $"https://www.youtube.com/watch?v={Uri.EscapeDataString(videoId)}";
+
+    /// <summary>A channel's page from its handle (<c>@MKIceAndFire</c>).</summary>
+    public static string Channel(string handle) => $"https://www.youtube.com/@{Uri.EscapeDataString(handle.TrimStart('@'))}";
 }
 
 /// <summary>The board's videos and how the last sync went.</summary>

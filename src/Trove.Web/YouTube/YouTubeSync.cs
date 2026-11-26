@@ -11,7 +11,7 @@ namespace Trove.Web.YouTube;
 /// their state, rating and date.
 /// </summary>
 public sealed class YouTubeSync(
-    IServiceScopeFactory scopes, IOptionsMonitor<YouTubeOptions> options, TimeProvider time, ILogger<YouTubeSync> logger)
+    IServiceScopeFactory scopes, IOptionsMonitor<YouTubeOptions> options, YouTubeKeyStore keys, TimeProvider time, ILogger<YouTubeSync> logger)
 {
     private readonly SemaphoreSlim gate = new(1, 1);
 
@@ -23,7 +23,7 @@ public sealed class YouTubeSync(
         try
         {
             LastError = null;
-            if (!options.CurrentValue.HasApiKey)
+            if (!await keys.HasKeyAsync(cancellationToken))
             {
                 LastError = "No YouTube API key is set yet.";
             }
@@ -65,7 +65,7 @@ public sealed class YouTubeSync(
         var lastSynced = handles.Count > 0 && handles.All(h => synced.Any(c => SameHandle(c.Handle, h) && c.LastSyncedAt is not null))
             ? synced.Where(c => handles.Any(h => SameHandle(c.Handle, h))).Min(c => c.LastSyncedAt)
             : null;
-        return new SyncStatus(options.CurrentValue.HasApiKey, handles, lastSynced, LastError);
+        return new SyncStatus(await keys.HasKeyAsync(cancellationToken), handles, lastSynced, LastError);
     }
 
     private async Task SyncChannelAsync(TroveDbContext db, YouTubeDataApi api, string handle, CancellationToken cancellationToken)
@@ -161,23 +161,23 @@ public sealed class YouTubeSync(
 
 /// <summary>Syncs once at startup and then every <see cref="YouTubeOptions.SyncInterval"/>, when a key is set.</summary>
 public sealed class YouTubeSyncWorker(
-    YouTubeSync sync, IOptionsMonitor<YouTubeOptions> options, TimeProvider time, ILogger<YouTubeSyncWorker> logger) : BackgroundService
+    YouTubeSync sync, YouTubeKeyStore keys, IOptionsMonitor<YouTubeOptions> options, TimeProvider time, ILogger<YouTubeSyncWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (options.CurrentValue.HasApiKey)
+            try
             {
-                try
+                if (await keys.HasKeyAsync(stoppingToken))
                 {
                     await sync.SyncAsync(stoppingToken);
                 }
-                catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
-                {
-                    // A database that isn't up yet shouldn't take the app down; try again next time.
-                    logger.LogError(ex, "Background YouTube sync failed");
-                }
+            }
+            catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
+            {
+                // A database that isn't up yet shouldn't take the app down; try again next time.
+                logger.LogError(ex, "Background YouTube sync failed");
             }
 
             await Task.Delay(options.CurrentValue.SyncInterval, time, stoppingToken);

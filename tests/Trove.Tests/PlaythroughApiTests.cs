@@ -80,4 +80,28 @@ public sealed class PlaythroughApiTests : IAsyncLifetime
         Assert.Contains("6:12:05", html, StringComparison.Ordinal);
         Assert.Contains("Add a YouTube API key", html, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task Settings_show_no_key_and_link_to_making_one()
+    {
+        var client = factory.CreateClient();
+
+        var view = await client.GetFromJsonAsync<Trove.Core.Settings.YouTubeSettingsView>("/api/settings/youtube");
+        var html = await client.GetStringAsync("/settings");
+
+        Assert.Equal(Trove.Core.Settings.YouTubeKeySource.None, view!.Source);
+        Assert.Null(view.KeyEnding);
+        Assert.Contains("href=\"https://console.cloud.google.com/apis/credentials\"", html, StringComparison.Ordinal);
+        Assert.Contains("type=\"password\"", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_empty_key_is_turned_down_without_calling_youtube()
+    {
+        var response = await factory.CreateClient().PutAsJsonAsync("/api/settings/youtube/key", new Trove.Core.Settings.SaveYouTubeKeyRequest("  "));
+        var result = await response.Content.ReadFromJsonAsync<Trove.Core.Settings.SaveYouTubeKeyResult>();
+
+        Assert.False(result!.Saved);
+        Assert.Equal("Paste a key first.", result.Error);
+    }
 }

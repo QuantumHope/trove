@@ -92,4 +92,17 @@ public sealed class PlaythroughRuleTests
     [InlineData(45_600L, "45K views")]
     public void Views_read_like_youtube(long views, string expected) =>
         Assert.Equal(expected, VideoFormat.Views(views));
+
+    [Theory]
+    [InlineData("STRAY Gameplay Walkthrough FULL GAME [4K 60FPS PS5] - No Commentary", "STRAY", "4K 60FPS PS5")]
+    [InlineData("UNCHARTED 1 DRAKE'S FORTUNE Gameplay Walkthrough FULL GAME [4K 60FPS PS5] - No Commentary", "UNCHARTED 1 DRAKE'S FORTUNE", "4K 60FPS PS5")]
+    [InlineData("THE LAST OF US PART I - FULL GAME", "THE LAST OF US PART I", null)]
+    [InlineData("Full Game Walkthrough [PC]", "Full Game Walkthrough [PC]", "PC")]
+    [InlineData("Something else entirely", "Something else entirely", null)]
+    public void Titles_lead_with_the_game(string title, string game, string? details)
+    {
+        var split = VideoTitle.Split(title);
+        Assert.Equal(game, split.Game);
+        Assert.Equal(details, split.Details);
+    }
 }

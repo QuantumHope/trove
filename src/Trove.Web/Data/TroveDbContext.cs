@@ -12,6 +12,8 @@ public sealed class TroveDbContext(DbContextOptions<TroveDbContext> options) : D
 
     public DbSet<YouTubeVideoRow> YouTubeVideos => Set<YouTubeVideoRow>();
 
+    public DbSet<AppSettingRow> AppSettings => Set<AppSettingRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -40,7 +42,25 @@ public sealed class TroveDbContext(DbContextOptions<TroveDbContext> options) : D
             video.Property(v => v.State).HasConversion<string>().HasMaxLength(20);
             video.Property(v => v.Rating).HasPrecision(3, 2);
         });
+
+        modelBuilder.Entity<AppSettingRow>(setting =>
+        {
+            setting.ToTable("app_settings");
+            setting.HasKey(s => s.Key);
+            setting.Property(s => s.Key).HasMaxLength(100);
+            setting.Property(s => s.Value).HasMaxLength(4000);
+        });
     }
+}
+
+/// <summary>A setting changed in the app rather than in configuration. Secrets are stored encrypted.</summary>
+public sealed class AppSettingRow
+{
+    public required string Key { get; set; }
+
+    public required string Value { get; set; }
+
+    public DateTimeOffset UpdatedAt { get; set; }
 }
 
 public sealed class YouTubeChannelRow

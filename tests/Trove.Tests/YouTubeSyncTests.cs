@@ -1,9 +1,11 @@
 using System.Net;
 using System.Text;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Trove.Core.Playthroughs;
+using Trove.Core.Settings;
 using Trove.Web.Data;
 using Trove.Web.YouTube;
 
@@ -26,6 +28,9 @@ public sealed class YouTubeSyncTests : IDisposable
             o.Channels = ["@MKIceAndFire"];
         });
         collection.AddSingleton(TimeProvider.System);
+        collection.AddDataProtection().UseEphemeralDataProtectionProvider();
+        collection.AddSingleton<YouTubeKeyStore>();
+        collection.AddScoped<YouTubeSettingsService>();
         collection.AddHttpClient<YouTubeDataApi>().ConfigurePrimaryHttpMessageHandler(() => youtube);
         collection.AddSingleton<YouTubeSync>();
         services = collection.BuildServiceProvider();
@@ -98,6 +103,42 @@ public sealed class YouTubeSyncTests : IDisposable
         services.Dispose();
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         File.Delete(file);
+    }
+
+    [Fact]
+    public async Task A_key_saved_in_settings_is_tested_encrypted_and_used_instead_of_configuration()
+    {
+        using var scope = services.CreateScope();
+        var settings = scope.ServiceProvider.GetRequiredService<YouTubeSettingsService>();
+        Assert.Equal(YouTubeKeySource.Configuration, (await settings.GetAsync()).Source);
+
+        var result = await settings.SaveKeyAsync("  saved-key-WXYZ ");
+
+        Assert.True(result.Saved);
+        Assert.Equal(YouTubeKeySource.Saved, result.Settings.Source);
+        Assert.Equal("WXYZ", result.Settings.KeyEnding);
+        Assert.Equal("saved-key-WXYZ", youtube.Requests[0].Headers.GetValues("X-Goog-Api-Key").Single());
+        var stored = await scope.ServiceProvider.GetRequiredService<TroveDbContext>().AppSettings.AsNoTracking().SingleAsync();
+        Assert.DoesNotContain("saved-key", stored.Value, StringComparison.Ordinal);
+        Assert.Equal(("saved-key-WXYZ", YouTubeKeySource.Saved), await services.GetRequiredService<YouTubeKeyStore>().GetAsync());
+
+        var removed = await settings.RemoveKeyAsync();
+        Assert.Equal(YouTubeKeySource.Configuration, removed.Source);
+        Assert.Equal("-key", removed.KeyEnding);
+    }
+
+    [Fact]
+    public async Task A_key_youtube_refuses_is_not_saved()
+    {
+        youtube.Refuse = true;
+        using var scope = services.CreateScope();
+
+        var result = await scope.ServiceProvider.GetRequiredService<YouTubeSettingsService>().SaveKeyAsync("bad-key");
+
+        Assert.False(result.Saved);
+        Assert.Contains("refused the key", result.Error, StringComparison.Ordinal);
+        Assert.Equal(YouTubeKeySource.Configuration, result.Settings.Source);
+        Assert.Empty(scope.ServiceProvider.GetRequiredService<TroveDbContext>().AppSettings);
     }
 
     private async Task<List<YouTubeVideoRow>> Videos()
