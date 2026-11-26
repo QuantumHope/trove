@@ -100,6 +100,7 @@ h1:focus { outline: none; }
     border-radius: 10px;
 }
 .trove-card p { margin: 0; }
+.trove-error-title { color: var(--accent-error); }
 .trove-empty { color: var(--text-machine); font-size: var(--type-label-size); }
 
 .trove-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-md); }

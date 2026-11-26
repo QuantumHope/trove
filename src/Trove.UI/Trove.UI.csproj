@@ -21,6 +21,15 @@
     <ItemGroup>
       <_HopeLabThemeCss Include="$(HopeLabThemesCssFolder)/*.css" />
     </ItemGroup>
+    <!-- Drop copies of themes the package no longer ships, so a renamed or removed theme stops being served. -->
+    <ItemGroup>
+      <_HopeLabThemeCssCopies Include="@(_HopeLabThemeCss->'$(MSBuildProjectDirectory)/wwwroot/themes/%(Filename)%(Extension)')" />
+      <_StaleHopeLabThemeCss Include="$(MSBuildProjectDirectory)/wwwroot/themes/*.css" Exclude="@(_HopeLabThemeCssCopies)" />
+    </ItemGroup>
+    <Delete Files="@(_StaleHopeLabThemeCss)" />
+    <ItemGroup>
+      <Content Remove="@(_StaleHopeLabThemeCss->'wwwroot/themes/%(Filename)%(Extension)')" />
+    </ItemGroup>
     <Copy SourceFiles="@(_HopeLabThemeCss)" DestinationFolder="$(MSBuildProjectDirectory)/wwwroot/themes" SkipUnchangedFiles="true" />
     <ItemGroup>
       <Content Remove="wwwroot/themes/*.css" />

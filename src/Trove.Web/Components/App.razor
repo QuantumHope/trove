@@ -14,11 +14,11 @@
     <link rel="stylesheet" href="@Assets["_content/Trove.UI/themes/index.css"]" />
     <link rel="stylesheet" href="@Assets["_content/Trove.UI/trove.css"]" />
     <ImportMap />
-    <HeadOutlet @rendermode="InteractiveWebAssembly" />
+    <HeadOutlet @rendermode="PageRenderMode" />
 </head>
 
 <body>
-    <Routes @rendermode="InteractiveWebAssembly" />
+    <Routes @rendermode="PageRenderMode" />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script>
         if ("serviceWorker" in navigator) {
@@ -28,3 +28,13 @@
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    // Every page is interactive WebAssembly except the server-only error page, which opts out with
+    // [ExcludeFromInteractiveRouting] so it renders statically and can read the request.
+    private IComponentRenderMode? PageRenderMode =>
+        HttpContext.AcceptsInteractiveRouting() ? InteractiveWebAssembly : null;
+}

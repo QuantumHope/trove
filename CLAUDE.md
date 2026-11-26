@@ -26,7 +26,9 @@ dotnet run --project src/Trove.Web     # http://localhost:5317
 - `src/Trove.Web.Client` is the WebAssembly entry point. The whole app is interactive WebAssembly, prerendered on the
   server.
 - `src/Trove.UI` is a Razor class library with every screen, the layout and the theming, so a MAUI Blazor Hybrid shell
-  can reuse it later. Put new screens and components here, not in the two host projects.
+  can reuse it later. Put new screens and components here, not in the two host projects. The one exception is
+  `src/Trove.Web/Components/Pages/Error.razor`: the production error page reads the request, so it stays on the server and
+  opts out of interactive routing.
 - `tests/Trove.Tests` covers the theme catalog against the shared package, the layout with bUnit, and the server with
   `WebApplicationFactory`.
 

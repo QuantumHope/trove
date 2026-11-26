@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Trove.Tests;
@@ -39,5 +40,17 @@ public sealed class ServerTests(WebApplicationFactory<Program> factory) : IClass
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Contains("Not found", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_production_error_page_renders_on_the_server()
+    {
+        var production = factory.WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+
+        var response = await production.CreateClient().GetAsync("/Error");
+        var html = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("Something went wrong", html, StringComparison.Ordinal);
+        Assert.Contains("trove-nav", html, StringComparison.Ordinal);
     }
 }
