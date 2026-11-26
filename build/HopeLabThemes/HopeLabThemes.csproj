@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Restores the shared MattEland.HopeLab.Themes package so Trove can copy its CSS. The package is an Avalonia library,
+       so it's kept in this project of its own: referenced from Trove's projects, Avalonia and its build-time generators
+       would come along with it. Nothing here is compiled into Trove. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MattEland.HopeLab.Themes" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <!-- The restored package's css/ folder, for Trove.UI's copy and the theme tests. -->
+  <Target Name="GetHopeLabThemesCssFolder" Returns="$(HopeLabThemesCssFolder)">
+    <PropertyGroup>
+      <HopeLabThemesCssFolder Condition="'$(PkgMattEland_HopeLab_Themes)' != ''">$(PkgMattEland_HopeLab_Themes)/css</HopeLabThemesCssFolder>
+    </PropertyGroup>
+  </Target>
+</Project>

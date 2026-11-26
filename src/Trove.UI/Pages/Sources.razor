@@ -1,0 +1,34 @@
+@page "/sources"
+
+<PageTitle>Sources · Trove</PageTitle>
+
+<h1>Sources</h1>
+<p class="trove-lead">Where things come from. Trove is the source of truth; these only add and update what they find.</p>
+
+<section class="trove-list">
+    @foreach (var source in Planned)
+    {
+        <div class="trove-card trove-row">
+            <div>
+                <h2>@source.Name</h2>
+                <p>@source.What</p>
+            </div>
+            <span class="trove-pill">Not set up yet</span>
+        </div>
+    }
+</section>
+
+@code {
+    private sealed record Source(string Name, string What);
+
+    private static readonly Source[] Planned =
+    [
+        new("Goodreads", "Your shelves from the library CSV export."),
+        new("Audible", "Your library from an Audible Library Extractor CSV."),
+        new("Kindle", "Your library, read from the Kindle web reader page."),
+        new("ePub folder", "Books in a folder on the home box."),
+        new("YouTube", "New uploads from the creators and playlists you choose, filtered by your rules."),
+        new("Steam", "Games you own and hours played."),
+        new("CORA reading list", "Articles to read, from CORA."),
+    ];
+}

@@ -1,0 +1,17 @@
+<Project>
+  <!-- Finds the restored MattEland.HopeLab.Themes css/ folder through build/HopeLabThemes, restoring that project first
+       when a build starts from a single project (running src/Trove.Web on its own) instead of the solution. -->
+  <PropertyGroup>
+    <_HopeLabThemesProject>$(MSBuildThisFileDirectory)HopeLabThemes/HopeLabThemes.csproj</_HopeLabThemesProject>
+  </PropertyGroup>
+
+  <Target Name="ResolveHopeLabThemesCssFolder">
+    <MSBuild Projects="$(_HopeLabThemesProject)" Targets="Restore" Properties="_TroveThemesRestore=true"
+             Condition="!Exists('$(MSBuildThisFileDirectory)HopeLabThemes/obj/project.assets.json')" />
+    <MSBuild Projects="$(_HopeLabThemesProject)" Targets="GetHopeLabThemesCssFolder">
+      <Output TaskParameter="TargetOutputs" PropertyName="HopeLabThemesCssFolder" />
+    </MSBuild>
+    <Error Condition="'$(HopeLabThemesCssFolder)' == '' or !Exists('$(HopeLabThemesCssFolder)/index.css')"
+           Text="Couldn't find the MattEland.HopeLab.Themes CSS. Run 'dotnet restore Trove.slnx' and build again." />
+  </Target>
+</Project>

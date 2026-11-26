@@ -424,3 +424,6 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+# Copied from the MattEland.HopeLab.Themes package on build
+src/Trove.UI/wwwroot/themes/

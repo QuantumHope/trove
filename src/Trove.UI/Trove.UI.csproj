@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <!-- Trove's screens, layout and theming, as a Razor class library so a MAUI Blazor Hybrid shell can reuse them later. -->
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Trove.Tests" />
+  </ItemGroup>
+
+  <Import Project="..\..\build\HopeLabThemes.targets" />
+
+  <!-- Copy the shared themes' CSS into wwwroot/themes on every build, so Trove always wears the restored package's
+       themes (0.1.*, like the other HopeLab apps). The copies are ignored by git; change a theme in
+       MattEland.HopeLab.Shared, not here. -->
+  <Target Name="CopyHopeLabThemes" DependsOnTargets="ResolveHopeLabThemesCssFolder" BeforeTargets="ResolveStaticWebAssetsInputs;AssignTargetPaths">
+    <ItemGroup>
+      <_HopeLabThemeCss Include="$(HopeLabThemesCssFolder)/*.css" />
+    </ItemGroup>
+    <!-- Drop copies of themes the package no longer ships, so a renamed or removed theme stops being served. -->
+    <ItemGroup>
+      <_HopeLabThemeCssCopies Include="@(_HopeLabThemeCss->'$(MSBuildProjectDirectory)/wwwroot/themes/%(Filename)%(Extension)')" />
+      <_StaleHopeLabThemeCss Include="$(MSBuildProjectDirectory)/wwwroot/themes/*.css" Exclude="@(_HopeLabThemeCssCopies)" />
+    </ItemGroup>
+    <Delete Files="@(_StaleHopeLabThemeCss)" />
+    <ItemGroup>
+      <Content Remove="@(_StaleHopeLabThemeCss->'wwwroot/themes/%(Filename)%(Extension)')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_HopeLabThemeCss)" DestinationFolder="$(MSBuildProjectDirectory)/wwwroot/themes" SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <Content Remove="wwwroot/themes/*.css" />
+      <Content Include="wwwroot/themes/*.css" />
+    </ItemGroup>
+  </Target>
+</Project>

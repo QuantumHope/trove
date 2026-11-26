@@ -1,0 +1,35 @@
+@inject IJSRuntime Js
+
+@* The header's theme picker, like the Bench's: the choice applies at once and is kept in this browser. *@
+<label class="trove-theme-picker">
+    <span class="trove-theme-picker-label">Theme</span>
+    <select @onchange="OnChangedAsync" disabled="@(!ready)" aria-label="Theme">
+        @foreach (var theme in ThemeCatalog.All)
+        {
+            <option value="@theme.Id" selected="@(theme.Id == current.Id)">@theme.Name</option>
+        }
+    </select>
+</label>
+
+@code {
+    private ThemeInfo current = ThemeCatalog.Find(null);
+    private bool ready;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        current = ThemeCatalog.Find(await Js.InvokeAsync<string?>("trove.theme.get"));
+        ready = true;
+        StateHasChanged();
+    }
+
+    private async Task OnChangedAsync(ChangeEventArgs e)
+    {
+        current = ThemeCatalog.Find(e.Value as string);
+        await Js.InvokeVoidAsync("trove.theme.set", current.Id);
+    }
+}

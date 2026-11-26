@@ -1,0 +1,24 @@
+@page "/Error"
+@attribute [ExcludeFromInteractiveRouting]
+@using System.Diagnostics
+
+<PageTitle>Something went wrong · Trove</PageTitle>
+
+<h1 class="trove-error-title">Something went wrong</h1>
+<p>Trove hit an error while handling that request. Try again, or head back to <a href="">Home</a>.</p>
+
+@if (ShowRequestId)
+{
+    <p class="trove-empty">Request ID: <code>@RequestId</code></p>
+}
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

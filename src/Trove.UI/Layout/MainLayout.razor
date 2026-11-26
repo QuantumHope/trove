@@ -1,0 +1,31 @@
+@inherits LayoutComponentBase
+
+<div class="trove-shell">
+    <header class="trove-header">
+        <a class="trove-brand" href="">
+            <span class="trove-brand-mark" aria-hidden="true">◆</span>
+            <span class="trove-brand-name">Trove</span>
+        </a>
+        <ThemePicker />
+    </header>
+
+    <nav class="trove-nav" aria-label="Main">
+        @foreach (var area in NavArea.All)
+        {
+            <NavLink class="trove-nav-link" href="@area.Href" Match="@(area.Href.Length == 0 ? NavLinkMatch.All : NavLinkMatch.Prefix)" title="@area.Summary">
+                <span class="trove-nav-glyph" aria-hidden="true">@area.Glyph</span>
+                <span class="trove-nav-label">@area.Title</span>
+            </NavLink>
+        }
+    </nav>
+
+    <main class="trove-main">
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Something went wrong.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

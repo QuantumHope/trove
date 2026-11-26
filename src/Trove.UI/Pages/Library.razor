@@ -1,0 +1,23 @@
+@page "/library"
+
+<PageTitle>Library · Trove</PageTitle>
+
+<h1>Library</h1>
+<p class="trove-lead">Everything in Trove. Status is where you are with an item; a book counts once whatever format you have it in.</p>
+
+<div class="trove-chips" role="list" aria-label="Kinds">
+    @foreach (var kind in MediaKinds.All)
+    {
+        <span class="trove-chip" role="listitem">@kind</span>
+    }
+</div>
+
+<section class="trove-board">
+    @foreach (var status in MediaKinds.Statuses)
+    {
+        <div class="trove-card trove-column">
+            <h2>@status</h2>
+            <p class="trove-empty">Nothing here yet.</p>
+        </div>
+    }
+</section>

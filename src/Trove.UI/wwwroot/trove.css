@@ -1,0 +1,159 @@
+/* Trove's layout. Every colour, face and size comes from the shared HopeLab theme tokens (themes/*.css, copied from
+   MattEland.HopeLab.Themes), so all 24 themes work. Don't hard-code colours here; add a token in the shared repo. */
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--surface-void);
+    color: var(--text-primary-dark);
+    font-family: var(--font-persona);
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-lh);
+}
+
+a { color: var(--accent-blue); }
+a:focus-visible, select:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+
+h1, h2 { font-family: var(--font-display); margin: 0; }
+h1 { font-size: var(--type-display-size); font-weight: var(--type-display-weight); line-height: var(--type-display-lh); }
+h2 { font-size: var(--type-subheading-size); font-weight: var(--type-subheading-weight); line-height: var(--type-subheading-lh); }
+h1:focus { outline: none; }
+
+.trove-shell {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "header header" "nav main";
+    min-height: 100vh;
+}
+
+.trove-header {
+    grid-area: header;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--gradient-header);
+    border-bottom: 1px solid var(--border-header);
+}
+
+.trove-brand { display: flex; align-items: center; gap: var(--space-sm); color: inherit; text-decoration: none; }
+.trove-brand-mark { color: var(--accent-pink); font-size: var(--type-heading-size); }
+.trove-brand-name { font-family: var(--font-display); font-size: var(--type-heading-size); font-weight: var(--type-heading-weight); }
+
+.trove-theme-picker { display: flex; align-items: center; gap: var(--space-sm); font-size: var(--type-label-size); color: var(--text-secondary-dark); }
+.trove-theme-picker select {
+    background: var(--surface-panel);
+    color: var(--text-primary-dark);
+    border: 1px solid var(--border-input);
+    border-radius: 6px;
+    padding: var(--space-xs) var(--space-sm);
+    font: inherit;
+}
+
+.trove-nav {
+    grid-area: nav;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-md) var(--space-sm);
+    background: var(--gradient-sidebar);
+    border-right: 1px solid var(--border-subtle);
+}
+
+.trove-nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: 8px;
+    color: var(--text-secondary-dark);
+    text-decoration: none;
+    font-weight: var(--type-label-weight);
+}
+.trove-nav-link:hover { background: var(--surface-elevated); color: var(--text-primary-dark); }
+.trove-nav-link.active { background: var(--surface-elevated); color: var(--accent-pink); box-shadow: inset 3px 0 0 var(--accent-pink); }
+.trove-nav-glyph { width: 1.2em; text-align: center; }
+
+.trove-main {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    padding: var(--space-xl);
+    max-width: 1100px;
+    width: 100%;
+}
+
+.trove-lead { margin: 0; color: var(--text-secondary-dark); max-width: 68ch; }
+
+.trove-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    background: var(--surface-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+}
+.trove-card p { margin: 0; }
+.trove-error-title { color: var(--accent-error); }
+.trove-empty { color: var(--text-machine); font-size: var(--type-label-size); }
+
+.trove-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-md); }
+.trove-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--space-md); }
+.trove-column { min-height: 160px; }
+.trove-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+.trove-row { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-md); }
+
+.trove-chips { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.trove-chip, .trove-pill {
+    padding: 2px var(--space-sm);
+    border-radius: 999px;
+    border: 1px solid var(--border-input);
+    color: var(--text-secondary-dark);
+    font-size: var(--type-label-size);
+    white-space: nowrap;
+}
+.trove-pill { font-family: var(--font-machine); font-size: var(--type-micro-size); }
+
+.trove-theme-list { margin: 0; padding-left: var(--space-md); display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-xs) var(--space-md); }
+.trove-theme-list span { color: var(--text-secondary-dark); }
+
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--surface-elevated);
+    color: var(--accent-error);
+    border-top: 1px solid var(--accent-error);
+    z-index: 1000;
+}
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: var(--space-md); }
+
+/* Phone: the rail becomes a bottom bar, like an installed app. */
+@media (max-width: 700px) {
+    .trove-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "header" "main" "nav"; }
+    .trove-nav {
+        position: sticky;
+        bottom: 0;
+        flex-direction: row;
+        justify-content: space-around;
+        padding: var(--space-xs) var(--space-xs) calc(var(--space-xs) + env(safe-area-inset-bottom, 0px));
+        border-right: 0;
+        border-top: 1px solid var(--border-subtle);
+        background: var(--surface-sidebar);
+    }
+    .trove-nav-link { flex-direction: column; gap: 2px; padding: var(--space-xs); font-size: var(--type-micro-size); }
+    .trove-nav-link.active { box-shadow: inset 0 3px 0 var(--accent-pink); }
+    .trove-nav-glyph { font-size: var(--type-subheading-size); }
+    .trove-main { padding: var(--space-md); }
+    .trove-theme-picker-label { display: none; }
+    .trove-row { flex-direction: column; align-items: flex-start; }
+}
