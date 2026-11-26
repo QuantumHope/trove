@@ -1,0 +1,30 @@
+@* Asked when a video moves to Done: how many stars? Skipping still marks it done, just unrated. *@
+
+<div class="trove-dialog-backdrop" @onclick="Cancel">
+    <div class="trove-dialog trove-card" role="dialog" aria-modal="true" aria-labelledby="trove-rate-title" @onclick:stopPropagation="true">
+        <h2 id="trove-rate-title">How was it?</h2>
+        <p class="trove-dialog-video">@Video.Title</p>
+        <StarRatingInput @bind-Value="rating" Label="Your rating" />
+        <p class="trove-dialog-hint">Tap where on the stars you mean, in quarter stars. You can change it later.</p>
+        <div class="trove-dialog-actions">
+            <button type="button" class="trove-button" @onclick="Cancel">Cancel</button>
+            <button type="button" class="trove-button" @onclick="() => OnDone.InvokeAsync(null)">Skip rating</button>
+            <button type="button" class="trove-button is-primary" disabled="@(rating is null)" @onclick="() => OnDone.InvokeAsync(rating)">Mark done</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private decimal? rating;
+
+    [Parameter, EditorRequired] public Playthrough Video { get; set; } = default!;
+
+    /// <summary>Marks it done, with the rating given (or none when skipped).</summary>
+    [Parameter] public EventCallback<decimal?> OnDone { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override void OnInitialized() => rating = Video.Rating;
+
+    private Task Cancel() => OnCancel.InvokeAsync();
+}

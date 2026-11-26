@@ -8,7 +8,14 @@
 <div class="trove-chips" role="list" aria-label="Kinds">
     @foreach (var kind in MediaKinds.All)
     {
-        <span class="trove-chip" role="listitem">@kind</span>
+        @if (kind == "Video")
+        {
+            <a class="trove-chip is-link" role="listitem" href="library/youtube">Full playthroughs</a>
+        }
+        else
+        {
+            <span class="trove-chip" role="listitem">@kind</span>
+        }
     }
 </div>
 

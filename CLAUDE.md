@@ -29,6 +29,14 @@ dotnet run --project src/Trove.Web     # http://localhost:5317
   can reuse it later. Put new screens and components here, not in the two host projects. The one exception is
   `src/Trove.Web/Components/Pages/Error.razor`: the production error page reads the request, so it stays on the server and
   opts out of interactive routing.
+- `src/Trove.Core` holds the model and the rules that need no UI or database (watch states, star ratings, the
+  full-game title filter, what a move does to the rating and watched date). Both hosts and the UI reference it.
+- `src/Trove.Web/Data` is EF Core: Postgres (schema `trove`, migrations in `Data/Migrations`) when
+  `ConnectionStrings:Trove` is set, otherwise SQLite with `EnsureCreated`. Add a migration with
+  `dotnet ef migrations add <Name> --project src/Trove.Web --output-dir Data/Migrations`.
+- `src/Trove.Web/YouTube` reads the YouTube Data API (key in user secrets as `YouTube:ApiKey`, sent in the
+  `X-Goog-Api-Key` header so it never lands in a logged URL) and syncs channels incrementally on a timer.
+  `src/Trove.Web/Playthroughs` is the `/api/playthroughs` API the WebAssembly client calls.
 - `tests/Trove.Tests` covers the theme catalog against the shared package, the layout with bUnit, and the server with
   `WebApplicationFactory`.
 

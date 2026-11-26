@@ -427,3 +427,6 @@ FodyWeavers.xsd
 
 # Copied from the MattEland.HopeLab.Themes package on build
 src/Trove.UI/wwwroot/themes/
+
+# Trove's local SQLite database when no Postgres is configured
+App_Data/

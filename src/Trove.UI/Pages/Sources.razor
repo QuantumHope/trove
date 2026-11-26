@@ -13,13 +13,20 @@
                 <h2>@source.Name</h2>
                 <p>@source.What</p>
             </div>
-            <span class="trove-pill">Not set up yet</span>
+            @if (source.Href is { } href)
+            {
+                <a class="trove-pill is-link" href="@href">Full playthroughs</a>
+            }
+            else
+            {
+                <span class="trove-pill">Not set up yet</span>
+            }
         </div>
     }
 </section>
 
 @code {
-    private sealed record Source(string Name, string What);
+    private sealed record Source(string Name, string What, string? Href = null);
 
     private static readonly Source[] Planned =
     [
@@ -27,7 +34,7 @@
         new("Audible", "Your library from an Audible Library Extractor CSV."),
         new("Kindle", "Your library, read from the Kindle web reader page."),
         new("ePub folder", "Books in a folder on the home box."),
-        new("YouTube", "New uploads from the creators and playlists you choose, filtered by your rules."),
+        new("YouTube", "Full-game playthroughs from the channels in settings (YouTube:Channels), synced every few hours.", "library/youtube"),
         new("Steam", "Games you own and hours played."),
         new("CORA reading list", "Articles to read, from CORA."),
     ];

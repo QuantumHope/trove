@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Trove's model and rules, with no UI or storage: shared by the server, the browser and (later) the MAUI shell. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Trove.Tests" />
+  </ItemGroup>
+</Project>

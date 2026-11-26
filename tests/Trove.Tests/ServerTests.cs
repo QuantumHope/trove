@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Trove.Tests;
 
-public sealed class ServerTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ServerTests(TroveFactory factory) : IClassFixture<TroveFactory>
 {
     [Theory]
     [InlineData("/")]
@@ -12,6 +12,7 @@ public sealed class ServerTests(WebApplicationFactory<Program> factory) : IClass
     [InlineData("/goals")]
     [InlineData("/sources")]
     [InlineData("/settings")]
+    [InlineData("/library/youtube")]
     public async Task Main_areas_render(string path)
     {
         var response = await factory.CreateClient().GetAsync(path);
