@@ -84,16 +84,19 @@ public sealed class ArticleBoardTests : BunitContext
     }
 
     [Fact]
-    public void A_feed_article_names_its_feed_and_opens_in_a_new_tab()
+    public void A_feed_article_names_its_feed_opens_in_the_reader_and_has_a_new_tab_link()
     {
         var page = Render<Articles>();
 
         var card = page.Find("[data-article=feed]");
         Assert.Contains("Example feed", card.TextContent, StringComparison.Ordinal);
         var link = page.Find("[data-article=feed] .trove-article-title");
-        Assert.Equal("https://feed.example.com/post", link.GetAttribute("href"));
-        Assert.Equal("_blank", link.GetAttribute("target"));
-        Assert.Contains("noopener", link.GetAttribute("rel"), StringComparison.Ordinal);
+        Assert.Equal("library/articles/read/feed", link.GetAttribute("href"));
+        Assert.Null(link.GetAttribute("target"));
+        var external = page.Find("[data-article=feed] .trove-external");
+        Assert.Equal("https://feed.example.com/post", external.GetAttribute("href"));
+        Assert.Equal("_blank", external.GetAttribute("target"));
+        Assert.Contains("noopener", external.GetAttribute("rel"), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -277,7 +280,7 @@ public sealed class ArticleBoardTests : BunitContext
         Assert.NotNull(page.Find("[data-article=saved]"));
     }
 
-    private static Article Saved(string id, string url, string title, ReadState state, ArticleSource source = ArticleSource.Link, string? sourceName = null) =>
+    internal static Article Saved(string id, string url, string title, ReadState state, ArticleSource source = ArticleSource.Link, string? sourceName = null) =>
         new(id, url, title, new Uri(url).Host, null, null, null, source, sourceName, Added, state, null);
 
     [Fact]
@@ -313,7 +316,7 @@ public sealed class ArticleBoardTests : BunitContext
         });
     }
 
-    private sealed class FakeLibrary : IArticleLibrary
+    internal sealed class FakeLibrary : IArticleLibrary
     {
         private readonly List<Article> articles =
         [

@@ -1,0 +1,199 @@
+@page "/library/articles/read/{Id}"
+@inject IArticleLibrary Library
+@inject IFrameChecker Frames
+@inject NavigationManager Nav
+@inject TimeProvider Time
+
+@* One article, shown inside Trove when its site allows it. CORA reads the page's headers first (ADR-132 in CORA): a
+   site that refuses frames gets a plain explanation and a new-tab button instead of a blank box. The page runs
+   sandboxed and never shares CORA's sign-in. Opening an article moves it to Reading, with an undo. *@
+
+<PageTitle>@(article?.Title ?? "Read") · Trove</PageTitle>
+
+<div class="trove-viewer is-article">
+    <a class="trove-back" href="library/articles">← Reading list</a>
+
+    @if (article is null)
+    {
+        @if (loadError is not null)
+        {
+            <div class="trove-banner is-error" role="alert">
+                <span>This article didn't load. @loadError</span>
+                <button type="button" class="trove-button" @onclick="LoadAsync">Try again</button>
+            </div>
+        }
+        else if (missing)
+        {
+            <div class="trove-viewer-panel">
+                <h1>That article isn't on your list</h1>
+                <p>It may have been removed, or the link is from somewhere else.</p>
+                <a class="trove-button is-primary" href="library/articles">Back to the reading list</a>
+            </div>
+        }
+        else
+        {
+            <p class="trove-empty">Loading…</p>
+        }
+    }
+    else
+    {
+        <div class="trove-viewer-head">
+            <div class="trove-viewer-heading">
+                <p class="trove-article-site">@article.Site</p>
+                <h1 class="trove-viewer-title">@article.Title</h1>
+            </div>
+            <div class="trove-viewer-actions">
+                @if (article.State.Forward() is { } forward && forward.To != ReadState.Reading)
+                {
+                    <button type="button" class="trove-button is-primary trove-reader-forward" @onclick="() => MoveAsync(forward.To)">@forward.Label</button>
+                }
+                else if (article.State == ReadState.Done && article.ReadOn is { } readOn)
+                {
+                    <span class="trove-viewer-state">@($"Read {VideoFormat.Day(readOn)}")</span>
+                }
+                <a class="trove-button trove-reader-newtab" href="@article.Url" target="_blank" rel="noopener noreferrer">Open in new tab ↗</a>
+            </div>
+        </div>
+
+        @if (moved is { } from)
+        {
+            <div class="trove-banner trove-viewer-note" role="status">
+                <span>Moved to Reading.</span>
+                <button type="button" class="trove-button is-small is-quiet" @onclick="() => UndoAsync(from)">Undo</button>
+            </div>
+        }
+
+        @if (message is not null)
+        {
+            <div class="trove-banner is-error" role="alert"><span>@message</span></div>
+        }
+
+        @if (blockedReason is not null)
+        {
+            <div class="trove-viewer-panel trove-reader-blocked" role="status">
+                <p class="trove-player-blocked-title">This page opens in its own tab</p>
+                <p>@blockedReason</p>
+                <div class="trove-viewer-panel-actions">
+                    <a class="trove-button is-primary" href="@article.Url" target="_blank" rel="noopener noreferrer">Open in new tab ↗</a>
+                    @if (CoraCopy is { } copy)
+                    {
+                        <a class="trove-button" href="@copy">Read CORA's copy</a>
+                    }
+                </div>
+            </div>
+        }
+        else if (check is null)
+        {
+            <div class="trove-reader-frame is-checking" role="status"><span>Checking whether @article.Site lets Trove show it…</span></div>
+        }
+        else
+        {
+            <div class="trove-reader-frame">
+                <iframe src="@article.Url" title="@article.Title" loading="eager"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
+                        referrerpolicy="no-referrer"></iframe>
+            </div>
+            <p class="trove-reader-help">
+                @if (check.Framing == Framing.Unknown)
+                {
+                    <span>CORA couldn't check this page first, so it may stay blank.</span>
+                }
+                else
+                {
+                    <span>Page blank or asking you to sign in?</span>
+                }
+                <a href="@article.Url" target="_blank" rel="noopener noreferrer">Open it in a new tab ↗</a>
+            </p>
+        }
+    }
+</div>
+
+@code {
+    private Article? article;
+    private bool missing;
+    private string? loadError;
+    private string? message;
+    private FrameCheck? check;
+    private string? blockedReason;
+    private ReadState? moved;
+
+    [Parameter] public string Id { get; set; } = "";
+
+    private DateOnly Today => DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+
+    // CORA's library copy of the page, once it's in CORA's knowledge.
+    private string? CoraCopy => article?.Cora is { Action: CoraAction.View } cora ? CoraLinks.For(cora) : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        if (article is null)
+        {
+            return;
+        }
+
+        blockedReason = ReaderRules.WontFrame(article.Url, new Uri(Nav.BaseUri));
+        if (blockedReason is null)
+        {
+            check = await Frames.CheckAsync(article.Url);
+            if (check.Framing == Framing.Blocked)
+            {
+                blockedReason = check.Reason ?? $"{article.Site} doesn't let other apps show its pages.";
+            }
+        }
+
+        if (ReaderRules.OnOpen(article.State) is { } to)
+        {
+            var from = article.State;
+            if (await SaveAsync(() => Library.MoveAsync(article.Id, new MoveArticleRequest(to, Today))))
+            {
+                moved = from;
+            }
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        loadError = null;
+        try
+        {
+            var board = await Library.GetBoardAsync();
+            article = board.Articles.FirstOrDefault(a => a.Id == Id);
+            missing = article is null;
+        }
+        catch (HttpRequestException ex)
+        {
+            loadError = ex.Message;
+        }
+    }
+
+    private async Task MoveAsync(ReadState to)
+    {
+        moved = null;
+        await SaveAsync(() => Library.MoveAsync(article!.Id, new MoveArticleRequest(to, Today)));
+    }
+
+    private async Task UndoAsync(ReadState from)
+    {
+        moved = null;
+        await SaveAsync(() => Library.MoveAsync(article!.Id, new MoveArticleRequest(from, Today)));
+    }
+
+    private async Task<bool> SaveAsync(Func<Task<Article>> change)
+    {
+        message = null;
+        try
+        {
+            var saved = await change();
+
+            // A move answers with the article itself; keep what CORA said about it if the answer leaves that out.
+            article = saved.Cora is null && article?.Cora is { } cora ? saved with { Cora = cora } : saved;
+            return true;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
+        {
+            message = $"That change didn't save. {ex.Message}";
+            return false;
+        }
+    }
+}

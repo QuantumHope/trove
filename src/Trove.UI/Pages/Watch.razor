@@ -1,0 +1,330 @@
+@page "/library/youtube/watch/{VideoId}"
+@implements IAsyncDisposable
+@inject IPlaythroughLibrary Library
+@inject IJSRuntime JS
+@inject TimeProvider Time
+
+@* One video, played inside Trove. YouTube's player loads only when Play is pressed; if the uploader doesn't allow
+   playing outside YouTube, the stage says so and offers YouTube itself. Pressing play moves the video to In
+   progress, with an undo. *@
+
+<PageTitle>@(video is null ? "Watch" : title.Game) · Trove</PageTitle>
+
+<div class="trove-viewer is-video">
+    <a class="trove-back" href="library/youtube">← Full playthroughs</a>
+
+    @if (video is null)
+    {
+        @if (loadError is not null)
+        {
+            <div class="trove-banner is-error" role="alert">
+                <span>This video didn't load. @loadError</span>
+                <button type="button" class="trove-button" @onclick="LoadAsync">Try again</button>
+            </div>
+        }
+        else if (missing)
+        {
+            <div class="trove-viewer-panel">
+                <h1>That video isn't on your board</h1>
+                <p>It may have been removed from the channel, or the link is from somewhere else.</p>
+                <a class="trove-button is-primary" href="library/youtube">Back to playthroughs</a>
+            </div>
+        }
+        else
+        {
+            <p class="trove-empty">Loading…</p>
+        }
+    }
+    else
+    {
+        <div class="trove-player" data-stage="@Stage">
+            @if (stage == PlayerStage.Poster)
+            {
+                <button type="button" class="trove-player-poster" @onclick="PlayAsync" aria-label="@($"Play {title.Game}")">
+                    <img src="@video.ThumbnailUrl" alt="" />
+                    <span class="trove-player-play" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="28" height="28"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>
+                    </span>
+                    <span class="trove-player-hint">@(resumeSeconds > 0 ? $"Pick up at {Clock(resumeSeconds)}" : $"Play · {VideoFormat.Length(video.Duration)}")</span>
+                </button>
+            }
+            else if (stage == PlayerStage.Unavailable)
+            {
+                <div class="trove-player-blocked" role="status">
+                    <p class="trove-player-blocked-title">@unavailableTitle</p>
+                    <p>@unavailableDetail</p>
+                    <a class="trove-button is-primary" href="@video.WatchUrl" target="_blank" rel="noopener noreferrer">Watch on YouTube ↗</a>
+                </div>
+            }
+            <div class="trove-player-host @(stage == PlayerStage.Playing ? "" : "is-idle")" @ref="host"></div>
+        </div>
+
+        <div class="trove-viewer-head">
+            <div class="trove-viewer-heading">
+                <h1 class="trove-viewer-title">@title.Game</h1>
+                <p class="trove-video-meta">
+                    @if (title.Details is { } details)
+                    {
+                        <span class="trove-video-tag">@details</span>
+                    }
+                    <span>@string.Join(" · ", Meta())</span>
+                </p>
+            </div>
+            <div class="trove-viewer-actions">
+                @if (video.State == WatchState.Done)
+                {
+                    <span class="trove-viewer-state">@(video.WatchedOn is { } on ? $"Watched {VideoFormat.Day(on)}" : "Watched")</span>
+                }
+                else
+                {
+                    <button type="button" class="trove-button is-primary" @onclick="() => rating = true">Mark done</button>
+                }
+                <a class="trove-button" href="@video.WatchUrl" target="_blank" rel="noopener noreferrer">Open on YouTube ↗</a>
+            </div>
+        </div>
+
+        @if (video.State == WatchState.Done)
+        {
+            <StarRatingInput Value="video.Rating" ValueChanged="RateAsync" Label="@($"Your rating for {title.Game}")" />
+        }
+
+        @if (moved is { } from)
+        {
+            <div class="trove-banner trove-viewer-note" role="status">
+                <span>Moved to In progress.</span>
+                <button type="button" class="trove-button is-small is-quiet" @onclick="() => UndoAsync(from)">Undo</button>
+            </div>
+        }
+        else if (ended && video.State != WatchState.Done)
+        {
+            <div class="trove-banner trove-viewer-note" role="status">
+                <span>That's the end of the video.</span>
+                <button type="button" class="trove-button is-small is-primary" @onclick="() => rating = true">Mark done</button>
+            </div>
+        }
+
+        @if (message is not null)
+        {
+            <div class="trove-banner is-error" role="alert"><span>@message</span></div>
+        }
+    }
+</div>
+
+@if (rating && video is not null)
+{
+    <RatingDialog Video="video" OnDone="FinishAsync" OnCancel="() => rating = false" />
+}
+
+@code {
+    private enum PlayerStage { Poster, Loading, Playing, Unavailable }
+
+    private Playthrough? video;
+    private (string Game, string? Details) title;
+    private bool missing;
+    private string? loadError;
+    private string? message;
+    private PlayerStage stage;
+    private int resumeSeconds;
+    private bool rating;
+    private bool ended;
+    private WatchState? moved;
+    private string unavailableTitle = "";
+    private string unavailableDetail = "";
+    private ElementReference host;
+    private IJSObjectReference? module;
+    private IJSObjectReference? player;
+    private DotNetObjectReference<Watch>? self;
+
+    [Parameter] public string VideoId { get; set; } = "";
+
+    private string Stage => stage.ToString().ToLowerInvariant();
+
+    private DateOnly Today => DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (video is not null && module is null)
+        {
+            try
+            {
+                module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Trove.UI/player.js");
+                var saved = await module.InvokeAsync<int>("resumeAt", video.VideoId);
+                if (saved > 0 && saved < video.Duration.TotalSeconds - 30)
+                {
+                    resumeSeconds = saved;
+                    StateHasChanged();
+                }
+            }
+            catch (JSException)
+            {
+            }
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        loadError = null;
+        try
+        {
+            var board = await Library.GetBoardAsync();
+            video = board.Videos.FirstOrDefault(v => v.VideoId == VideoId);
+            missing = video is null;
+            if (video is not null)
+            {
+                title = VideoTitle.Split(video.Title);
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            loadError = ex.Message;
+        }
+    }
+
+    private IEnumerable<string> Meta()
+    {
+        yield return video!.ChannelTitle;
+        if (video.ViewCount is not null)
+        {
+            yield return VideoFormat.Views(video.ViewCount);
+        }
+
+        yield return VideoFormat.Ago(video.PublishedAt, Time.GetUtcNow());
+        yield return VideoFormat.Length(video.Duration);
+    }
+
+    private async Task PlayAsync()
+    {
+        stage = PlayerStage.Loading;
+        try
+        {
+            module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Trove.UI/player.js");
+            self ??= DotNetObjectReference.Create(this);
+            stage = PlayerStage.Playing;
+            StateHasChanged();
+            player = await module.InvokeAsync<IJSObjectReference>("mount", host, video!.VideoId, self);
+        }
+        catch (JSException)
+        {
+            Unavailable("YouTube's player didn't load", "Something between you and YouTube stopped it. The video still plays on YouTube.");
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnPlaying()
+    {
+        ended = false;
+        if (video is not null && moved is null && ReaderRules.OnPlay(video.State) is { } to)
+        {
+            var from = video.State;
+            if (await SaveAsync(() => Library.MoveAsync(video.VideoId, new MoveRequest(to, null, Today))))
+            {
+                moved = from;
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    [JSInvokable]
+    public Task OnEnded()
+    {
+        ended = true;
+        moved = null;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable]
+    public Task OnPlayerError(int code)
+    {
+        // YouTube's player errors: 101 and 150 mean the uploader turned off playing on other sites; 100 means the
+        // video is gone or private; anything else is YouTube having trouble.
+        switch (code)
+        {
+            case 101 or 150:
+                Unavailable("This video only plays on YouTube", "The uploader doesn't allow it to play inside other apps.");
+                break;
+            case 100:
+                Unavailable("YouTube can't find this video", "It may be private now, or it was taken down.");
+                break;
+            default:
+                Unavailable("YouTube couldn't play this here", "It may still play on YouTube itself.");
+                break;
+        }
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void Unavailable(string heading, string detail)
+    {
+        stage = PlayerStage.Unavailable;
+        unavailableTitle = heading;
+        unavailableDetail = detail;
+    }
+
+    private async Task UndoAsync(WatchState from)
+    {
+        moved = null;
+        await SaveAsync(() => Library.MoveAsync(video!.VideoId, new MoveRequest(from, null, Today)));
+    }
+
+    private async Task FinishAsync(decimal? stars)
+    {
+        rating = false;
+        moved = null;
+        if (await SaveAsync(() => Library.MoveAsync(video!.VideoId, new MoveRequest(WatchState.Done, stars, Today))) && module is not null)
+        {
+            try
+            {
+                await module.InvokeVoidAsync("forget", video!.VideoId);
+            }
+            catch (JSException)
+            {
+            }
+        }
+    }
+
+    private Task RateAsync(decimal? stars) => SaveAsync(() => Library.RateAsync(video!.VideoId, stars));
+
+    private async Task<bool> SaveAsync(Func<Task<Playthrough>> change)
+    {
+        message = null;
+        try
+        {
+            video = await change();
+            return true;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
+        {
+            message = $"That change didn't save. {ex.Message}";
+            return false;
+        }
+    }
+
+    private static string Clock(int seconds) => VideoFormat.Length(TimeSpan.FromSeconds(seconds));
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (player is not null)
+            {
+                await player.InvokeVoidAsync("dispose");
+                await player.DisposeAsync();
+            }
+
+            if (module is not null)
+            {
+                await module.DisposeAsync();
+            }
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException)
+        {
+        }
+
+        self?.Dispose();
+    }
+}

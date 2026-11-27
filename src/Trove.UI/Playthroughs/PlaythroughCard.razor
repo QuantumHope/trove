@@ -1,13 +1,13 @@
 @* One video: the thumbnail with its length, the game leading the title, then the capture details, views and age.
-   The thumbnail and title open the video on YouTube in a new tab. *@
+   The thumbnail and title open the video in Trove's player; the small arrow opens it on YouTube in a new tab. *@
 
 <article class="trove-video" data-video="@Video.VideoId">
-    <a class="trove-video-thumb" href="@Video.WatchUrl" target="_blank" rel="noopener noreferrer" tabindex="-1" aria-hidden="true">
+    <a class="trove-video-thumb" href="@WatchHere" tabindex="-1" aria-hidden="true">
         <img src="@Video.ThumbnailUrl" alt="" loading="lazy" />
         <span class="trove-video-length">@VideoFormat.Length(Video.Duration)</span>
     </a>
     <div class="trove-video-body">
-        <a class="trove-video-title" href="@Video.WatchUrl" target="_blank" rel="noopener noreferrer" title="@Video.Title">@title.Game</a>
+        <a class="trove-video-title" href="@WatchHere" title="@Video.Title">@title.Game</a>
         <p class="trove-video-meta">
             @if (title.Details is { } details)
             {
@@ -28,6 +28,7 @@
                     @($"Watched {VideoFormat.Day(watched)}")
                 }
             </span>
+            <a class="trove-external" href="@Video.WatchUrl" target="_blank" rel="noopener noreferrer" title="Open on YouTube" aria-label="@($"Open {title.Game} on YouTube")">↗</a>
             <select @key="selectVersion" class="trove-state-select" value="@Video.State" @onchange="OnMoveSelected" aria-label="@($"Move {title.Game} to")">
                 @foreach (var state in WatchStates.All)
                 {
@@ -55,6 +56,9 @@
     [Parameter] public EventCallback<(Playthrough Video, WatchState State)> OnMove { get; set; }
 
     [Parameter] public EventCallback<(Playthrough Video, decimal? Rating)> OnRate { get; set; }
+
+    // Relative to Trove's base (/trove/), like every other link inside the app.
+    private string WatchHere => "library/youtube/watch/" + Uri.EscapeDataString(Video.VideoId);
 
     protected override void OnParametersSet() => title = VideoTitle.Split(Video.Title);
 
