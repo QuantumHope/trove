@@ -1,0 +1,43 @@
+@using Trove.Core.Setup
+@inject ITroveSetup Setup
+
+@* On start, asks once for what Trove itself can set: CORA's address. Anything else missing (the YouTube key, channels)
+   is an admin's job in CORA and is shown on the board that needs it, not here. A failed check shows nothing: the
+   board under it says what's wrong. "Later" lasts until the app is opened again. *@
+
+@if (asking)
+{
+    <CoraAddressDialog OnSaved="Saved" OnLater="Later" />
+}
+else if (saved)
+{
+    <div class="trove-toast" role="status">Saved. Trove can reach CORA now.</div>
+}
+
+@code {
+    private bool asking;
+    private bool saved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            asking = !(await Setup.GetAsync()).CoraAddressSet;
+        }
+        catch (HttpRequestException)
+        {
+            asking = false;
+        }
+    }
+
+    private async Task Saved()
+    {
+        asking = false;
+        saved = true;
+        StateHasChanged();
+        await Task.Delay(TimeSpan.FromSeconds(4));
+        saved = false;
+    }
+
+    private void Later() => asking = false;
+}

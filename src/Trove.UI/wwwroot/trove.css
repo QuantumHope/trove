@@ -617,3 +617,18 @@ h1:focus { outline: none; }
     .trove-add-panel { padding: var(--space-sm); }
     .trove-add-submit { flex: 1 1 100%; }
 }
+
+/* Setup: the first-run prompt for CORA's address, and the setup list in Settings. */
+.trove-setup-dialog { width: min(440px, 100%); }
+.trove-setup-dialog h2 { margin-bottom: var(--space-xs); }
+.trove-setup-form { display: flex; flex-direction: column; gap: var(--space-md); }
+.trove-setup-form .trove-field { flex: none; }
+.trove-setup-error { margin: 0; color: var(--accent-error); font-size: var(--type-label-size); }
+.trove-toast { position: fixed; left: 50%; bottom: calc(var(--space-lg) + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 950; max-width: calc(100% - 2 * var(--space-md)); padding: var(--space-sm) var(--space-md); background: var(--surface-elevated); border: 1px solid var(--accent-green); border-radius: 10px; font-size: var(--type-label-size); }
+.trove-setup-list { list-style: none; margin: 0 0 var(--space-md); padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
+.trove-setup-list li { display: flex; align-items: baseline; gap: var(--space-sm); }
+.trove-setup-mark { flex: none; width: 1.25em; text-align: center; font-weight: var(--type-label-weight); }
+.trove-setup-list li.is-set .trove-setup-mark { color: var(--accent-green); }
+.trove-setup-list li.is-missing .trove-setup-mark { color: var(--accent-error); }
+.trove-setup-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+@media (max-width: 767px) { .trove-toast { bottom: calc(72px + env(safe-area-inset-bottom)); } }

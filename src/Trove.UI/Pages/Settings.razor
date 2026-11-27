@@ -1,16 +1,44 @@
 @page "/settings"
+@inject ITroveSetup Setup
 
 <PageTitle>Settings · Trove</PageTitle>
 
 <h1>Settings</h1>
 
-<section class="trove-card trove-settings" aria-labelledby="youtube-heading">
-    <h2 id="youtube-heading">YouTube</h2>
+<section class="trove-card trove-settings" aria-labelledby="cora-heading">
+    <h2 id="cora-heading">CORA</h2>
     <p class="trove-settings-text">
-        CORA keeps the YouTube API key and the channel list, so every device you use Trove on shares them.
-        An admin sets the key in CORA under Admin → Modules → Trove.
+        CORA keeps Trove's settings, so every device you use Trove on shares them. An admin changes them in CORA under
+        Admin → Modules → Trove.
     </p>
-    <p><a class="trove-button" href="@CoraLinks.Modules">Open CORA's modules</a></p>
+    @if (status is { } s)
+    {
+        <ul class="trove-setup-list" aria-label="What Trove has">
+            <li class="@(s.CoraAddressSet ? "is-set" : "is-missing")">
+                <span class="trove-setup-mark" aria-hidden="true">@(s.CoraAddressSet ? "✓" : "!")</span>
+                <span>@(s.CoraAddressSet ? "Trove knows CORA's address." : "CORA's address isn't set, so the reading list gets no feed posts.")</span>
+            </li>
+            <li class="@(s.YouTubeKeySet ? "is-set" : "is-missing")">
+                <span class="trove-setup-mark" aria-hidden="true">@(s.YouTubeKeySet ? "✓" : "!")</span>
+                <span>@(s.YouTubeKeySet ? "A YouTube key is set." : "No YouTube key yet, so the YouTube board can't fill.")</span>
+            </li>
+            <li class="@(s.Channels > 0 ? "is-set" : "is-missing")">
+                <span class="trove-setup-mark" aria-hidden="true">@(s.Channels > 0 ? "✓" : "!")</span>
+                <span>@ChannelText(s.Channels)</span>
+            </li>
+        </ul>
+    }
+    else if (error is not null)
+    {
+        <p class="trove-settings-text" role="alert">@error</p>
+    }
+    <div class="trove-setup-actions">
+        <a class="trove-button" href="@CoraLinks.Modules">Open Trove's settings in CORA</a>
+        @if (status is { CoraAddressSet: false })
+        {
+            <button type="button" class="trove-button is-accent" @onclick="() => askingAddress = true">Set CORA's address</button>
+        }
+    </div>
 </section>
 
 <section class="trove-card" aria-labelledby="theme-heading">
@@ -20,3 +48,42 @@
         <ThemeList />
     </div>
 </section>
+
+@if (askingAddress)
+{
+    <CoraAddressDialog OnSaved="AddressSaved" OnLater="() => askingAddress = false" />
+}
+
+@code {
+    private SetupStatus? status;
+    private string? error;
+    private bool askingAddress;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            status = await Setup.GetAsync();
+            error = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            error = ex.Message;
+        }
+    }
+
+    private async Task AddressSaved()
+    {
+        askingAddress = false;
+        await LoadAsync();
+    }
+
+    private static string ChannelText(int channels) => channels switch
+    {
+        0 => "No YouTube channels on the list yet.",
+        1 => "Reading 1 YouTube channel.",
+        _ => $"Reading {channels} YouTube channels.",
+    };
+}
