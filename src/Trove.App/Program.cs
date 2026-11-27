@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Trove.App;
+using Trove.Core.Articles;
 using Trove.Core.Playthroughs;
 using Trove.UI;
+using Trove.UI.Articles;
 using Trove.UI.Playthroughs;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -18,5 +20,6 @@ builder.Services.AddScoped(sp => new HttpClient(new CoraApiHandler(sp.GetRequire
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
 });
 builder.Services.AddScoped<IPlaythroughLibrary, HttpPlaythroughLibrary>();
+builder.Services.AddScoped<IArticleLibrary, HttpArticleLibrary>();
 
 await builder.Build().RunAsync();

@@ -1,0 +1,192 @@
+@page "/library/articles"
+@inject IArticleLibrary Library
+@inject TimeProvider Time
+
+<PageTitle>Reading list · Trove</PageTitle>
+
+@if (Board is null)
+{
+    <h1>Reading list</h1>
+    @if (loadError is not null)
+    {
+        <div class="trove-banner is-error" role="alert">
+            <span>The reading list didn't load. @loadError</span>
+            <button type="button" class="trove-button" @onclick="LoadAsync">Try again</button>
+        </div>
+    }
+    else
+    {
+        <p class="trove-empty">Loading…</p>
+    }
+    return;
+}
+
+<header class="trove-page-header">
+    <div class="trove-page-heading">
+        <h1>Reading list</h1>
+        <p class="trove-lead">Articles to read. Paste a link to save it; it goes straight to Read next.</p>
+    </div>
+    <div class="trove-toolbar">
+        <button type="button" class="trove-button is-quiet trove-show-ignored" aria-pressed="@(showIgnored ? "true" : "false")" @onclick="() => showIgnored = !showIgnored">
+            Ignored <span class="trove-count">@Count(ReadState.Ignored)</span>
+        </button>
+    </div>
+</header>
+
+<form class="trove-add-article" @onsubmit="AddAsync" @onsubmit:preventDefault>
+    <label class="trove-visually-hidden" for="article-url">Link</label>
+    <input id="article-url" type="url" inputmode="url" autocomplete="off" placeholder="https://…" @bind="url" @bind:event="oninput" maxlength="2048" required />
+    <label class="trove-visually-hidden" for="article-title">Title (optional)</label>
+    <input id="article-title" type="text" autocomplete="off" placeholder="Title (optional)" @bind="title" @bind:event="oninput" maxlength="300" />
+    <button type="submit" class="trove-button is-primary" disabled="@(adding || string.IsNullOrWhiteSpace(url))">@(adding ? "Saving…" : "Save")</button>
+</form>
+
+@if (message is not null)
+{
+    <div class="trove-banner @(messageIsError ? "is-error" : "is-ok")" role="@(messageIsError ? "alert" : "status")"><span>@message</span></div>
+}
+
+<div class="trove-tabs" role="tablist" aria-label="Columns">
+    @foreach (var state in ReadStates.All)
+    {
+        <button type="button" role="tab" class="trove-tab @(state == tab ? "is-active" : "")" aria-selected="@(state == tab ? "true" : "false")" @onclick="() => tab = state">
+            @state.Label() <span class="trove-count">@Count(state)</span>
+        </button>
+    }
+</div>
+
+<section class="trove-video-board trove-article-board">
+    @foreach (var state in VisibleColumns)
+    {
+        <div class="trove-video-column @(state == tab ? "is-current" : "")" aria-label="@state.Label()">
+            <h2 class="trove-column-head">@state.Label() <span class="trove-count-pill">@Count(state)</span></h2>
+            @foreach (var article in InColumn(state))
+            {
+                <ArticleCard @key="article.Id" Article="article" Now="now" OnMove="MoveAsync" OnRemove="RemoveAsync" />
+            }
+            @if (Count(state) == 0)
+            {
+                <p class="trove-empty">@Empty(state)</p>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private bool showIgnored;
+    private bool adding;
+    private string url = "";
+    private string title = "";
+    private string? message;
+    private bool messageIsError;
+    private string? loadError;
+    private ReadState tab = ReadState.ReadNext;
+    private DateTimeOffset now;
+
+    private ArticleBoard? Board;
+
+    private IEnumerable<ReadState> VisibleColumns =>
+        showIgnored || tab == ReadState.Ignored ? ReadStates.All : ReadStates.Columns;
+
+    // The browser's own date, so an article finished late in the evening is recorded on the person's day.
+    private DateOnly Today => DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+
+    protected override async Task OnInitializedAsync()
+    {
+        now = Time.GetUtcNow();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loadError = null;
+        try
+        {
+            Board = await Library.GetBoardAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            loadError = ex.Message;
+        }
+    }
+
+    private int Count(ReadState state) => Board?.Articles.Count(a => a.State == state) ?? 0;
+
+    // Done is most recently read first; everything else arrives newest first.
+    private IEnumerable<Article> InColumn(ReadState state)
+    {
+        var articles = Board!.Articles.Where(a => a.State == state);
+        return state == ReadState.Done ? articles.OrderByDescending(a => a.ReadOn) : articles;
+    }
+
+    private static string Empty(ReadState state) => state switch
+    {
+        ReadState.New => "Articles from feeds land here.",
+        ReadState.ReadNext => "Save a link above to read it later.",
+        ReadState.Reading => "Nothing open right now.",
+        ReadState.Done => "Finished articles land here.",
+        _ => "Nothing ignored.",
+    };
+
+    private async Task AddAsync()
+    {
+        adding = true;
+        message = null;
+        try
+        {
+            var result = await Library.AddAsync(new AddArticleRequest(url.Trim(), string.IsNullOrWhiteSpace(title) ? null : title.Trim()));
+            Board = Board! with { Articles = [result.Article, .. Board.Articles.Where(a => a.Id != result.Article.Id)] };
+            Show(result.AlreadySaved
+                ? $"That link was already on your list. It's in {result.Article.State.Label()}."
+                : "Saved to Read next.", isError: false);
+            tab = result.Article.State;
+            url = "";
+            title = "";
+        }
+        catch (ArgumentException ex)
+        {
+            Show(ex.Message, isError: true);
+        }
+        catch (HttpRequestException ex)
+        {
+            Show($"That link didn't save. {ex.Message}", isError: true);
+        }
+        finally
+        {
+            adding = false;
+        }
+    }
+
+    private Task MoveAsync((Article Article, ReadState State) move) =>
+        SaveAsync(async () =>
+        {
+            var saved = await Library.MoveAsync(move.Article.Id, new MoveArticleRequest(move.State, Today));
+            Board = Board! with { Articles = [.. Board.Articles.Select(a => a.Id == saved.Id ? saved : a)] };
+        });
+
+    private Task RemoveAsync(Article article) =>
+        SaveAsync(async () =>
+        {
+            await Library.RemoveAsync(article.Id);
+            Board = Board! with { Articles = [.. Board.Articles.Where(a => a.Id != article.Id)] };
+        });
+
+    private async Task SaveAsync(Func<Task> change)
+    {
+        message = null;
+        try
+        {
+            await change();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
+        {
+            Show($"That change didn't save. {ex.Message}", isError: true);
+        }
+    }
+
+    private void Show(string text, bool isError)
+    {
+        message = text;
+        messageIsError = isError;
+    }
+}

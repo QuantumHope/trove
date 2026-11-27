@@ -253,7 +253,7 @@ h1:focus { outline: none; }
 .trove-button.is-quiet:hover:not(:disabled) { border-color: var(--border-input); color: var(--text-primary-dark); }
 .trove-button[aria-pressed="true"] { border-color: var(--accent-pink); color: var(--accent-pink); }
 .trove-button:focus-visible, .trove-tab:focus-visible, .trove-stars:focus-visible, .trove-state-select:focus-visible,
-.trove-key-row input:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.trove-key-row input:focus-visible, .trove-add-article input:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 .trove-chip.is-link, .trove-pill.is-link { color: var(--accent-blue); border-color: var(--accent-blue); text-decoration: none; }
 
 .trove-banner {
@@ -269,6 +269,8 @@ h1:focus { outline: none; }
     background: var(--surface-panel);
 }
 .trove-banner.is-error { border-left-color: var(--accent-error); color: var(--accent-error); }
+.trove-banner.is-ok { border-left-color: var(--accent-green); }
+.trove-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 .trove-page-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-md); }
 .trove-page-heading { display: flex; flex-direction: column; gap: var(--space-xs); }
@@ -376,6 +378,68 @@ h1:focus { outline: none; }
     cursor: pointer;
 }
 .trove-state-select:hover { color: var(--text-primary-dark); border-color: var(--accent-blue); }
+
+/* The reading list: the same columns as the playthrough board, with text cards and a link box above. */
+.trove-main:has(.trove-article-board) { max-width: 1500px; }
+.trove-add-article { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.trove-add-article input {
+    min-height: 36px;
+    padding: 0 var(--space-sm);
+    background: var(--surface-void);
+    color: var(--text-primary-dark);
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    font: inherit;
+    font-size: var(--type-label-size);
+}
+.trove-add-article input[type="url"] { flex: 2 1 320px; font-family: var(--font-machine); }
+.trove-add-article input[type="text"] { flex: 1 1 200px; }
+.trove-add-article .trove-button { min-height: 36px; }
+
+.trove-article {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: var(--space-sm);
+    border-radius: 10px;
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-subtle);
+    transition: border-color 120ms ease;
+}
+.trove-article:hover, .trove-article:focus-within { border-color: var(--border-input); }
+.trove-article p { margin: 0; }
+.trove-article-site {
+    color: var(--text-machine);
+    font-family: var(--font-machine);
+    font-size: var(--type-micro-size);
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.trove-article-title {
+    color: var(--text-primary-dark);
+    text-decoration: none;
+    font-weight: var(--type-subheading-weight);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.trove-article-title:hover { color: var(--accent-blue); }
+.trove-article-summary {
+    color: var(--text-secondary-dark);
+    font-size: var(--type-label-size);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.trove-article-meta { color: var(--text-secondary-dark); font-size: var(--type-micro-size); }
+.trove-article-remove { min-height: 24px; padding: 0 var(--space-xs); font-size: var(--type-micro-size); }
 
 .trove-stars { display: inline-flex; align-items: center; gap: 0; cursor: pointer; user-select: none; touch-action: manipulation; border-radius: 4px; align-self: flex-start; }
 .trove-stars > * { pointer-events: none; }

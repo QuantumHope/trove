@@ -1,0 +1,70 @@
+@* One article: the site, the title (opens the article in a new tab), a few lines of summary, then where it came from
+   and when. Saved links can be removed; a feed article is moved to Ignored instead. *@
+
+<article class="trove-article" data-article="@Article.Id">
+    <p class="trove-article-site">@Article.Site</p>
+    <a class="trove-article-title" href="@Article.Url" target="_blank" rel="noopener noreferrer" title="@Article.Title">@Article.Title</a>
+    @if (!string.IsNullOrWhiteSpace(Article.Summary))
+    {
+        <p class="trove-article-summary">@Article.Summary</p>
+    }
+    <p class="trove-article-meta">@string.Join(" · ", Meta())</p>
+
+    <div class="trove-video-footer">
+        <span class="trove-video-watched">
+            @if (Article.State == ReadState.Done && Article.ReadOn is { } readOn)
+            {
+                @($"Read {VideoFormat.Day(readOn)}")
+            }
+        </span>
+        @if (Article.CanRemove)
+        {
+            <button type="button" class="trove-button is-quiet trove-article-remove" @onclick="() => OnRemove.InvokeAsync(Article)" aria-label="@($"Remove {Article.Title}")">Remove</button>
+        }
+        <select @key="selectVersion" class="trove-state-select" value="@Article.State" @onchange="OnMoveSelected" aria-label="@($"Move {Article.Title} to")">
+            @foreach (var state in ReadStates.All)
+            {
+                <option value="@state">@state.Label()</option>
+            }
+        </select>
+    </div>
+</article>
+
+@code {
+    // As on the video card: a pick that doesn't change the bound value (a failed save) would otherwise stay showing.
+    private int selectVersion;
+
+    [Parameter, EditorRequired] public Article Article { get; set; } = default!;
+
+    [Parameter] public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
+
+    [Parameter] public EventCallback<(Article Article, ReadState State)> OnMove { get; set; }
+
+    [Parameter] public EventCallback<Article> OnRemove { get; set; }
+
+    private IEnumerable<string> Meta()
+    {
+        if (Article.Source == ArticleSource.Feed && !string.IsNullOrWhiteSpace(Article.SourceName))
+        {
+            yield return Article.SourceName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(Article.Author))
+        {
+            yield return Article.Author;
+        }
+
+        yield return Article.PublishedAt is { } published
+            ? VideoFormat.Ago(published, Now)
+            : $"Saved {VideoFormat.Ago(Article.AddedAt, Now)}";
+    }
+
+    private async Task OnMoveSelected(ChangeEventArgs e)
+    {
+        selectVersion++;
+        if (Enum.TryParse<ReadState>(e.Value?.ToString(), out var state) && state != Article.State)
+        {
+            await OnMove.InvokeAsync((Article, state));
+        }
+    }
+}
