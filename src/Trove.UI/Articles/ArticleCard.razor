@@ -1,11 +1,11 @@
-@* One article: the site, the title (opens the article in a new tab), a few lines of summary, then where it came from
+@* One article: the site, the title (opens it in Trove's reader; the small arrow opens it in a new tab), a few lines of summary, then where it came from
    and when. Under that, where CORA is with the page and the one thing to do about it. At the bottom, the next step along
    the list as one button, with every other move in the select. Saved links can be removed; a feed article is ignored
    instead. *@
 
 <article class="trove-article" data-article="@Article.Id">
     <p class="trove-article-site">@Article.Site</p>
-    <a class="trove-article-title" href="@Article.Url" target="_blank" rel="noopener noreferrer" title="@Article.Title">@Article.Title</a>
+    <a class="trove-article-title" href="@ReadHere" title="@Article.Title">@Article.Title</a>
     @if (!string.IsNullOrWhiteSpace(Article.Summary))
     {
         <p class="trove-article-summary">@Article.Summary</p>
@@ -55,6 +55,7 @@
             <span class="trove-article-read">@($"Read {VideoFormat.Day(readOn)}")</span>
         }
         <span class="trove-article-tools">
+            <a class="trove-external" href="@Article.Url" target="_blank" rel="noopener noreferrer" title="Open in a new tab" aria-label="@($"Open {Article.Title} in a new tab")">↗</a>
             <label class="trove-move">
                 <span class="trove-visually-hidden">@($"Move {Article.Title} to")</span>
                 <select @key="selectVersion" class="trove-state-select" value="@Article.State" @onchange="OnMoveSelected" title="Move to another column">
@@ -88,6 +89,8 @@
 
     /// <summary>CORA is reading this one's page now; the button waits.</summary>
     [Parameter] public bool AddingToCora { get; set; }
+
+    private string ReadHere => "library/articles/read/" + Uri.EscapeDataString(Article.Id);
 
     private static string AddLabel(CoraKnowledge cora) => cora.Action == CoraAction.Retry ? "Try again" : "Add to CORA";
 

@@ -55,7 +55,8 @@ public sealed class PlaythroughBoardTests : BunitContext
 
         Assert.Equal(("a", new MoveRequest(WatchState.InProgress, null)), library.Moves.Single());
         Assert.NotNull(page.Find("[data-video=a] [role=slider]"));
-        Assert.Equal("https://www.youtube.com/watch?v=a", page.Find("[data-video=a] .trove-video-title").GetAttribute("href"));
+        Assert.Equal("library/youtube/watch/a", page.Find("[data-video=a] .trove-video-title").GetAttribute("href"));
+        Assert.Equal("https://www.youtube.com/watch?v=a", page.Find("[data-video=a] .trove-external").GetAttribute("href"));
     }
 
     [Fact]
@@ -81,7 +82,7 @@ public sealed class PlaythroughBoardTests : BunitContext
         Assert.Equal("/admin/modules", page.FindAll("a").Single(a => a.TextContent == "Open CORA").GetAttribute("href"));
     }
 
-    private sealed class FakeLibrary : IPlaythroughLibrary
+    internal sealed class FakeLibrary : IPlaythroughLibrary
     {
         public string? LoadFailure { get; set; }
 
