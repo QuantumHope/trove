@@ -33,13 +33,26 @@ public sealed class HttpArticleLibrary(HttpClient http) : IArticleLibrary
             ?? throw new InvalidOperationException("The server sent no article.");
     }
 
+    public async Task<Article> AddToCoraAsync(string id, CancellationToken cancellationToken = default)
+    {
+        using var response = await http.PostAsync($"api/articles/{Uri.EscapeDataString(id)}/add-to-cora", null, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.BadGateway)
+        {
+            throw new HttpRequestException(await ErrorAsync(response, "CORA couldn't be reached. Try again in a moment."));
+        }
+
+        await ThrowIfRefusedAsync(response, "CORA couldn't read this page.");
+        return await response.Content.ReadFromJsonAsync<Article>(cancellationToken)
+            ?? throw new InvalidOperationException("The server sent no article.");
+    }
+
     public async Task RemoveAsync(string id, CancellationToken cancellationToken = default)
     {
         using var response = await http.DeleteAsync($"api/articles/{Uri.EscapeDataString(id)}", cancellationToken);
         await ThrowIfRefusedAsync(response);
     }
 
-    private static async Task ThrowIfRefusedAsync(HttpResponseMessage response)
+    private static async Task ThrowIfRefusedAsync(HttpResponseMessage response, string fallback = "Trove couldn't save that change.")
     {
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
@@ -48,7 +61,7 @@ public sealed class HttpArticleLibrary(HttpClient http) : IArticleLibrary
 
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
-            throw new InvalidOperationException(await ErrorAsync(response, "Trove couldn't save that change."));
+            throw new InvalidOperationException(await ErrorAsync(response, fallback));
         }
 
         response.EnsureSuccessStatusCode();

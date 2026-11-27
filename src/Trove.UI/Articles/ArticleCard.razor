@@ -9,6 +9,26 @@
         <p class="trove-article-summary">@Article.Summary</p>
     }
     <p class="trove-article-meta">@string.Join(" · ", Meta())</p>
+    @if (Article.Cora is { } cora)
+    {
+        <div class="trove-article-cora" data-cora="@cora.State">
+            <span class="trove-cora-badge is-@cora.State.ToString().ToLowerInvariant()">@cora.Label</span>
+            @if (cora.Next is { } next)
+            {
+                <span class="trove-cora-next">@next</span>
+            }
+            @if (cora.CanAdd)
+            {
+                <button type="button" class="trove-button is-quiet trove-cora-add" disabled="@AddingToCora" @onclick="() => OnAddToCora.InvokeAsync(Article)" aria-label="@($"Add {Article.Title} to CORA")">
+                    @(AddingToCora ? "Adding…" : cora.State == KnowledgeState.Failed ? "Try again" : "Add to CORA")
+                </button>
+            }
+            @if (cora.ChangesetId is { } changeset && !cora.CanAdd)
+            {
+                <a class="trove-cora-open" href="@CoraLinks.Changeset(changeset)" aria-label="@($"Open {Article.Title} in CORA")">Open in CORA</a>
+            }
+        </div>
+    }
 
     <div class="trove-video-footer">
         <span class="trove-video-watched">
@@ -41,6 +61,11 @@
     [Parameter] public EventCallback<(Article Article, ReadState State)> OnMove { get; set; }
 
     [Parameter] public EventCallback<Article> OnRemove { get; set; }
+
+    [Parameter] public EventCallback<Article> OnAddToCora { get; set; }
+
+    /// <summary>CORA is reading this one's page now; the button waits.</summary>
+    [Parameter] public bool AddingToCora { get; set; }
 
     private IEnumerable<string> Meta()
     {

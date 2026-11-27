@@ -441,6 +441,31 @@ h1:focus { outline: none; }
 .trove-article-meta { color: var(--text-secondary-dark); font-size: var(--type-micro-size); }
 .trove-article-remove { min-height: 24px; padding: 0 var(--space-xs); font-size: var(--type-micro-size); }
 
+/* Whether CORA has read the article: a badge, what's next when it's queued, and the one action that fits. */
+.trove-add-cora { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: var(--text-secondary-dark); font-size: var(--type-label-size); cursor: pointer; }
+.trove-add-cora input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-blue); }
+.trove-article-cora { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-sm); font-size: var(--type-micro-size); }
+.trove-cora-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 1px 8px 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary-dark);
+    font-weight: var(--type-label-weight);
+    line-height: 18px;
+}
+.trove-cora-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.8; }
+.trove-cora-badge.is-incora { color: var(--accent-green); border-color: color-mix(in srgb, var(--accent-green) 45%, transparent); }
+.trove-cora-badge.is-queued { color: var(--accent-yellow); border-color: color-mix(in srgb, var(--accent-yellow) 45%, transparent); }
+.trove-cora-badge.is-failed { color: var(--accent-error); border-color: color-mix(in srgb, var(--accent-error) 45%, transparent); }
+.trove-cora-badge.is-notincora::before { background: none; border: 1px solid currentColor; }
+.trove-cora-next { color: var(--text-machine); }
+.trove-cora-open { color: var(--accent-blue); text-decoration: none; margin-left: auto; }
+.trove-cora-open:hover { text-decoration: underline; }
+.trove-cora-add { min-height: 24px; padding: 0 var(--space-xs); font-size: var(--type-micro-size); margin-left: auto; }
+
 .trove-stars { display: inline-flex; align-items: center; gap: 0; cursor: pointer; user-select: none; touch-action: manipulation; border-radius: 4px; align-self: flex-start; }
 .trove-stars > * { pointer-events: none; }
 .trove-stars.is-readonly { cursor: default; }

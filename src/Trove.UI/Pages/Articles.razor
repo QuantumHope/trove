@@ -24,7 +24,7 @@
 <header class="trove-page-header">
     <div class="trove-page-heading">
         <h1>Reading list</h1>
-        <p class="trove-lead">Articles to read. Paste a link to save it; it goes straight to Read next. Posts from feeds you send to Trove arrive in New.</p>
+        <p class="trove-lead">Articles to read. Paste a link to save it; it goes straight to Read next. Posts from feeds you send to Trove arrive in New. Each card says whether CORA has read it into your knowledge.</p>
     </div>
     <div class="trove-toolbar">
         <a class="trove-button is-quiet" href="@CoraLinks.Feeds">Manage feeds in CORA</a>
@@ -39,6 +39,10 @@
     <input id="article-url" type="url" inputmode="url" autocomplete="off" placeholder="https://…" @bind="url" @bind:event="oninput" maxlength="2048" required />
     <label class="trove-visually-hidden" for="article-title">Title (optional)</label>
     <input id="article-title" type="text" autocomplete="off" placeholder="Title (optional)" @bind="title" @bind:event="oninput" maxlength="300" />
+    <label class="trove-add-cora">
+        <input type="checkbox" @bind="addToCora" />
+        <span>Also add to CORA</span>
+    </label>
     <button type="submit" class="trove-button is-primary" disabled="@(adding || string.IsNullOrWhiteSpace(url))">@(adding ? "Saving…" : "Save")</button>
 </form>
 
@@ -47,6 +51,14 @@
     <div class="trove-banner is-error" role="alert">
         <span>New feed posts didn't come through. @feedError</span>
         <a class="trove-button" href="@CoraLinks.Feeds">Open feeds in CORA</a>
+    </div>
+}
+
+@if (Board.KnowledgeError is { } knowledgeError)
+{
+    <div class="trove-banner" role="status">
+        <span>Couldn't check which articles are in CORA. @knowledgeError</span>
+        <button type="button" class="trove-button" @onclick="LoadAsync">Check again</button>
     </div>
 }
 
@@ -71,7 +83,8 @@
             <h2 class="trove-column-head">@state.Label() <span class="trove-count-pill">@Count(state)</span></h2>
             @foreach (var article in InColumn(state))
             {
-                <ArticleCard @key="article.Id" Article="article" Now="now" OnMove="MoveAsync" OnRemove="RemoveAsync" />
+                <ArticleCard @key="article.Id" Article="article" Now="now" OnMove="MoveAsync" OnRemove="RemoveAsync"
+                             OnAddToCora="AddToCoraAsync" AddingToCora="addingToCora.Contains(article.Id)" />
             }
             @if (Count(state) == 0)
             {
@@ -84,6 +97,8 @@
 @code {
     private bool showIgnored;
     private bool adding;
+    private bool addToCora;
+    private readonly HashSet<string> addingToCora = [];
     private string url = "";
     private string title = "";
     private string? message;
@@ -143,11 +158,20 @@
         message = null;
         try
         {
-            var result = await Library.AddAsync(new AddArticleRequest(url.Trim(), string.IsNullOrWhiteSpace(title) ? null : title.Trim()));
+            var result = await Library.AddAsync(new AddArticleRequest(
+                url.Trim(), string.IsNullOrWhiteSpace(title) ? null : title.Trim(), addToCora));
             Board = Board! with { Articles = [result.Article, .. Board.Articles.Where(a => a.Id != result.Article.Id)] };
-            Show(result.AlreadySaved
+            var saved = result.AlreadySaved
                 ? $"That link was already on your list. It's in {result.Article.State.Label()}."
-                : "Saved to Read next.", isError: false);
+                : "Saved to Read next.";
+            if (result.CoraError is { } coraError)
+            {
+                Show($"{saved} {coraError}", isError: true);
+            }
+            else
+            {
+                Show(addToCora && result.Article.Cora is { } cora ? $"{saved} {CoraOutcome(cora)}" : saved, isError: false);
+            }
             tab = result.Article.State;
             url = "";
             title = "";
@@ -172,6 +196,38 @@
             var saved = await Library.MoveAsync(move.Article.Id, new MoveArticleRequest(move.State, Today));
             Board = Board! with { Articles = [.. Board.Articles.Select(a => a.Id == saved.Id ? saved : a)] };
         });
+
+    private async Task AddToCoraAsync(Article article)
+    {
+        message = null;
+        addingToCora.Add(article.Id);
+        try
+        {
+            var saved = await Library.AddToCoraAsync(article.Id);
+            Board = Board! with { Articles = [.. Board.Articles.Select(a => a.Id == saved.Id ? saved : a)] };
+            if (saved.Cora is { } cora)
+            {
+                Show(CoraOutcome(cora), isError: false);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
+        {
+            Show(ex.Message, isError: true);
+        }
+        finally
+        {
+            addingToCora.Remove(article.Id);
+        }
+    }
+
+    // What adding a page to CORA came to, said once in the banner; the card keeps the state.
+    private static string CoraOutcome(CoraKnowledge cora) => cora switch
+    {
+        { State: KnowledgeState.InCora } => "CORA already has this page in your knowledge.",
+        { State: KnowledgeState.Queued, ChangesetStatus: "unread" } => "Queued in CORA. Check its text there, then press Analyze.",
+        { State: KnowledgeState.Queued } => "Queued in CORA.",
+        _ => "CORA couldn't read this page.",
+    };
 
     private Task RemoveAsync(Article article) =>
         SaveAsync(async () =>

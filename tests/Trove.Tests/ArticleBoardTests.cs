@@ -25,7 +25,7 @@ public sealed class ArticleBoardTests : BunitContext
         page.Find("#article-title").Input("  A new one  ");
         page.Find("form").Submit();
 
-        Assert.Equal(new AddArticleRequest("https://example.com/new", "A new one"), library.Adds.Single());
+        Assert.Equal(new AddArticleRequest("https://example.com/new", "A new one", AddToCora: false), library.Adds.Single());
         Assert.Contains("Saved to Read next", page.Find("[role=status]").TextContent, StringComparison.Ordinal);
         Assert.Contains("A new one", page.Find("[aria-label='Read next']").TextContent, StringComparison.Ordinal);
         Assert.Equal("", page.Find("#article-url").GetAttribute("value"));
@@ -142,6 +142,94 @@ public sealed class ArticleBoardTests : BunitContext
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(meta, "Julia Evans"));
     }
 
+    [Fact]
+    public void Each_card_says_whether_CORA_has_read_it()
+    {
+        library.Knowledge["saved"] = new CoraKnowledge(KnowledgeState.InCora, "c1", "applied");
+        library.Knowledge["feed"] = new CoraKnowledge(KnowledgeState.Queued, "c2", "open");
+        var page = Render<Articles>();
+
+        var saved = page.Find("[data-article=saved] .trove-article-cora");
+        Assert.Contains("In CORA", saved.TextContent, StringComparison.Ordinal);
+        Assert.Equal("/admin/changesets/c1", saved.QuerySelector("a")!.GetAttribute("href"));
+        Assert.Null(saved.QuerySelector("button"));
+
+        var feed = page.Find("[data-article=feed] .trove-article-cora");
+        Assert.Contains("Queued in CORA", feed.TextContent, StringComparison.Ordinal);
+        Assert.Contains("ready to review", feed.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_article_CORA_hasnt_read_can_be_added_from_its_card()
+    {
+        library.Knowledge["saved"] = new CoraKnowledge(KnowledgeState.NotInCora);
+        var page = Render<Articles>();
+
+        page.Find("[data-article=saved] .trove-cora-add").Click();
+
+        Assert.Equal(["saved"], library.CoraAdds);
+        var cora = page.Find("[data-article=saved] .trove-article-cora");
+        Assert.Contains("Queued in CORA", cora.TextContent, StringComparison.Ordinal);
+        Assert.Contains("check its text, then Analyze", cora.TextContent, StringComparison.Ordinal);
+        Assert.Contains("Check its text there, then press Analyze", page.Find("[role=status]").TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_page_CORA_wont_read_says_why_and_offers_another_try()
+    {
+        library.Knowledge["saved"] = new CoraKnowledge(KnowledgeState.NotInCora);
+        library.CoraFailure = new InvalidOperationException("CORA couldn't read this page. The site answered 403.");
+        var page = Render<Articles>();
+
+        page.Find("[data-article=saved] .trove-cora-add").Click();
+
+        Assert.Contains("The site answered 403.", page.Find("[role=alert]").TextContent, StringComparison.Ordinal);
+        Assert.Equal("Add to CORA", page.Find("[data-article=saved] .trove-cora-add").TextContent.Trim());
+
+        library.Knowledge["saved"] = new CoraKnowledge(KnowledgeState.Failed, "c3", "failed");
+        page = Render<Articles>();
+        Assert.Equal("Try again", page.Find("[data-article=saved] .trove-cora-add").TextContent.Trim());
+    }
+
+    [Fact]
+    public void A_brand_new_link_can_go_to_CORA_as_it_is_saved()
+    {
+        var page = Render<Articles>();
+
+        page.Find("#article-url").Input("https://example.com/not-anywhere-yet");
+        page.Find(".trove-add-cora input").Change(true);
+        page.Find("form").Submit();
+
+        Assert.True(library.Adds.Single().AddToCora);
+        var status = page.Find("[role=status]").TextContent;
+        Assert.Contains("Saved to Read next. Queued in CORA.", status, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_link_CORA_wont_take_is_still_saved_and_says_why()
+    {
+        library.AddCoraError = "CORA couldn't read this page. It isn't a web page.";
+        var page = Render<Articles>();
+
+        page.Find("#article-url").Input("https://example.com/file.zip");
+        page.Find(".trove-add-cora input").Change(true);
+        page.Find("form").Submit();
+
+        Assert.Contains("Saved to Read next. CORA couldn't read this page.", page.Find("[role=alert]").TextContent, StringComparison.Ordinal);
+        Assert.NotNull(page.Find("[data-article=new]"));
+    }
+
+    [Fact]
+    public void When_CORA_cant_be_asked_the_list_still_shows_and_says_why()
+    {
+        library.KnowledgeError = "CORA couldn't be reached to say which articles it has read.";
+        var page = Render<Articles>();
+
+        Assert.Contains("Couldn't check which articles are in CORA.", page.Markup, StringComparison.Ordinal);
+        Assert.Empty(page.FindAll(".trove-article-cora"));
+        Assert.NotNull(page.Find("[data-article=saved]"));
+    }
+
     private static Article Saved(string id, string url, string title, ReadState state, ArticleSource source = ArticleSource.Link, string? sourceName = null) =>
         new(id, url, title, new Uri(url).Host, null, null, null, source, sourceName, Added, state, null);
 
@@ -167,10 +255,23 @@ public sealed class ArticleBoardTests : BunitContext
 
         public List<string> Removes { get; } = [];
 
+        public Dictionary<string, CoraKnowledge> Knowledge { get; } = [];
+
+        public string? KnowledgeError { get; set; }
+
+        public List<string> CoraAdds { get; } = [];
+
+        public Exception? CoraFailure { get; set; }
+
+        public string? AddCoraError { get; set; }
+
+        private Article WithCora(Article a) => a with { Cora = Knowledge.GetValueOrDefault(a.Id) };
+
         public Task<ArticleBoard> GetBoardAsync(CancellationToken cancellationToken = default) =>
             LoadFailure is { } failure
                 ? Task.FromException<ArticleBoard>(new HttpRequestException(failure))
-                : Task.FromResult(new ArticleBoard([.. articles, .. Extra is null ? Array.Empty<Article>() : [Extra]], Feeds));
+                : Task.FromResult(new ArticleBoard(
+                    [.. articles.Select(WithCora), .. Extra is null ? Array.Empty<Article>() : [Extra]], Feeds, KnowledgeError));
 
         public Task<AddArticleResult> AddAsync(AddArticleRequest request, CancellationToken cancellationToken = default)
         {
@@ -187,7 +288,14 @@ public sealed class ArticleBoardTests : BunitContext
 
             var article = Saved("new", request.Url, request.Title ?? request.Url, ReadState.ReadNext);
             articles.Add(article);
-            return Task.FromResult(new AddArticleResult(article, AlreadySaved: false));
+            if (request.AddToCora && AddCoraError is { } coraError)
+            {
+                return Task.FromResult(new AddArticleResult(article, AlreadySaved: false, coraError));
+            }
+
+            return Task.FromResult(new AddArticleResult(
+                request.AddToCora ? article with { Cora = new CoraKnowledge(KnowledgeState.Queued, "c9", "pending") } : article,
+                AlreadySaved: false));
         }
 
         public Task<Article> MoveAsync(string id, MoveArticleRequest request, CancellationToken cancellationToken = default)
@@ -200,6 +308,18 @@ public sealed class ArticleBoardTests : BunitContext
             };
             articles[articles.FindIndex(a => a.Id == id)] = moved;
             return Task.FromResult(moved);
+        }
+
+        public Task<Article> AddToCoraAsync(string id, CancellationToken cancellationToken = default)
+        {
+            CoraAdds.Add(id);
+            if (CoraFailure is { } failure)
+            {
+                return Task.FromException<Article>(failure);
+            }
+
+            Knowledge[id] = new CoraKnowledge(KnowledgeState.Queued, "c9", "unread");
+            return Task.FromResult(WithCora(articles.Single(a => a.Id == id)));
         }
 
         public Task RemoveAsync(string id, CancellationToken cancellationToken = default)
