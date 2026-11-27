@@ -24,9 +24,10 @@
 <header class="trove-page-header">
     <div class="trove-page-heading">
         <h1>Reading list</h1>
-        <p class="trove-lead">Articles to read. Paste a link to save it; it goes straight to Read next.</p>
+        <p class="trove-lead">Articles to read. Paste a link to save it; it goes straight to Read next. Posts from feeds you send to Trove arrive in New.</p>
     </div>
     <div class="trove-toolbar">
+        <a class="trove-button is-quiet" href="@CoraLinks.Feeds">Manage feeds in CORA</a>
         <button type="button" class="trove-button is-quiet trove-show-ignored" aria-pressed="@(showIgnored ? "true" : "false")" @onclick="() => showIgnored = !showIgnored">
             Ignored <span class="trove-count">@Count(ReadState.Ignored)</span>
         </button>
@@ -40,6 +41,14 @@
     <input id="article-title" type="text" autocomplete="off" placeholder="Title (optional)" @bind="title" @bind:event="oninput" maxlength="300" />
     <button type="submit" class="trove-button is-primary" disabled="@(adding || string.IsNullOrWhiteSpace(url))">@(adding ? "Saving…" : "Save")</button>
 </form>
+
+@if (Board.Feeds is { Error: { } feedError })
+{
+    <div class="trove-banner is-error" role="alert">
+        <span>New feed posts didn't come through. @feedError</span>
+        <a class="trove-button" href="@CoraLinks.Feeds">Open feeds in CORA</a>
+    </div>
+}
 
 @if (message is not null)
 {
@@ -121,7 +130,7 @@
 
     private static string Empty(ReadState state) => state switch
     {
-        ReadState.New => "Articles from feeds land here.",
+        ReadState.New => "Posts from feeds you send to Trove land here.",
         ReadState.ReadNext => "Save a link above to read it later.",
         ReadState.Reading => "Nothing open right now.",
         ReadState.Done => "Finished articles land here.",

@@ -33,7 +33,14 @@ public sealed record Article(
     public bool CanRemove => Source == ArticleSource.Link;
 }
 
-public sealed record ArticleBoard(IReadOnlyList<Article> Articles);
+/// <summary>
+/// The reading list, and how its copy of CORA's feed posts stands. Feeds are CORA's: each one there is set to send
+/// its posts to Knowledge, Trove or both, and the ones sent to Trove arrive here in New.
+/// </summary>
+public sealed record ArticleBoard(IReadOnlyList<Article> Articles, FeedSyncStatus? Feeds = null);
+
+/// <summary>Whether feed posts are being copied (<paramref name="Connected"/>), when it last tried, and why the last try failed.</summary>
+public sealed record FeedSyncStatus(bool Connected, DateTimeOffset? LastSyncedAt, string? Error);
 
 /// <summary>A link to save. The title is optional; without one the address stands in.</summary>
 public sealed record AddArticleRequest(string Url, string? Title);

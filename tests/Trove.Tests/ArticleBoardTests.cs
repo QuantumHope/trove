@@ -110,6 +110,28 @@ public sealed class ArticleBoardTests : BunitContext
         Assert.NotNull(page.Find("[data-article=saved]"));
     }
 
+    [Fact]
+    public void Feed_posts_that_did_not_come_through_say_why_and_where_feeds_are_kept()
+    {
+        library.Feeds = new FeedSyncStatus(Connected: true, LastSyncedAt: Added, Error: "CORA couldn't be reached for new feed posts.");
+        var page = Render<Articles>();
+
+        var banner = page.Find("[role=alert]");
+        Assert.Contains("couldn't be reached", banner.TextContent, StringComparison.Ordinal);
+        Assert.Equal("/admin/feeds", banner.QuerySelector("a")!.GetAttribute("href"));
+        Assert.NotNull(page.Find("[data-article=saved]"));
+    }
+
+    [Fact]
+    public void A_healthy_feed_copy_shows_no_banner_and_links_to_feeds_in_cora()
+    {
+        library.Feeds = new FeedSyncStatus(Connected: true, LastSyncedAt: Added, Error: null);
+        var page = Render<Articles>();
+
+        Assert.Empty(page.FindAll("[role=alert]"));
+        Assert.Contains(page.FindAll("a"), a => a.GetAttribute("href") == "/admin/feeds" && a.TextContent.Contains("Manage feeds", StringComparison.Ordinal));
+    }
+
     private static Article Saved(string id, string url, string title, ReadState state, ArticleSource source = ArticleSource.Link, string? sourceName = null) =>
         new(id, url, title, new Uri(url).Host, null, null, null, source, sourceName, Added, state, null);
 
@@ -123,6 +145,8 @@ public sealed class ArticleBoardTests : BunitContext
 
         public string? LoadFailure { get; set; }
 
+        public FeedSyncStatus? Feeds { get; set; }
+
         public string? AddFailure { get; set; }
 
         public List<AddArticleRequest> Adds { get; } = [];
@@ -134,7 +158,7 @@ public sealed class ArticleBoardTests : BunitContext
         public Task<ArticleBoard> GetBoardAsync(CancellationToken cancellationToken = default) =>
             LoadFailure is { } failure
                 ? Task.FromException<ArticleBoard>(new HttpRequestException(failure))
-                : Task.FromResult(new ArticleBoard([.. articles]));
+                : Task.FromResult(new ArticleBoard([.. articles], Feeds));
 
         public Task<AddArticleResult> AddAsync(AddArticleRequest request, CancellationToken cancellationToken = default)
         {
