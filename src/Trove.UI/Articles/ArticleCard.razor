@@ -1,0 +1,138 @@
+@* One article: the site, the title (opens the article in a new tab), a few lines of summary, then where it came from
+   and when. Under that, where CORA is with the page and the one thing to do about it. At the bottom, the next step along
+   the list as one button, with every other move in the select. Saved links can be removed; a feed article is ignored
+   instead. *@
+
+<article class="trove-article" data-article="@Article.Id">
+    <p class="trove-article-site">@Article.Site</p>
+    <a class="trove-article-title" href="@Article.Url" target="_blank" rel="noopener noreferrer" title="@Article.Title">@Article.Title</a>
+    @if (!string.IsNullOrWhiteSpace(Article.Summary))
+    {
+        <p class="trove-article-summary">@Article.Summary</p>
+    }
+    <p class="trove-article-meta">@string.Join(" · ", Meta())</p>
+
+    @if (Article.Cora is { } cora)
+    {
+        <div class="trove-article-cora @(cora.NeedsYou ? "needs-you" : "")" data-cora="@cora.State">
+            <div class="trove-cora-status">
+                <span class="trove-cora-badge is-@Tone(cora)">@cora.Label</span>
+                <span class="trove-cora-detail">@cora.Detail</span>
+            </div>
+            <div class="trove-cora-actions">
+                @if (cora.CanAdd)
+                {
+                    <button type="button" class="trove-button is-small trove-cora-add @(cora.Action == CoraAction.Add ? "is-accent" : "")" disabled="@AddingToCora"
+                            @onclick="() => OnAddToCora.InvokeAsync(Article)" aria-label="@($"{AddLabel(cora)}: {Article.Title}")">
+                        @(AddingToCora ? "Sending…" : AddLabel(cora))
+                    </button>
+                    @if (cora.ChangesetId is { } failedId)
+                    {
+                        <a class="trove-button is-small is-quiet trove-cora-open" href="@CoraLinks.Changeset(failedId)" aria-label="@($"View {Article.Title} in CORA")">View in CORA</a>
+                    }
+                }
+                else if (CoraLinks.For(cora) is { } href)
+                {
+                    <a class="trove-button is-small trove-cora-open @(cora.NeedsYou ? "is-accent" : "")" href="@href" aria-label="@($"{OpenLabel(cora)}: {Article.Title}")">@OpenLabel(cora)</a>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="trove-article-footer">
+        @if (Article.State.Forward() is { } forward)
+        {
+            <button type="button" class="trove-button is-small trove-article-forward" @onclick="() => OnMove.InvokeAsync((Article, forward.To))"
+                    aria-label="@($"{forward.Label}: {Article.Title}")">@forward.Label</button>
+        }
+        @if (Article.State == ReadState.New && !Article.CanRemove)
+        {
+            <button type="button" class="trove-button is-small is-quiet trove-article-ignore" @onclick="() => OnMove.InvokeAsync((Article, ReadState.Ignored))"
+                    aria-label="@($"Ignore {Article.Title}")">Ignore</button>
+        }
+        @if (Article.State == ReadState.Done && Article.ReadOn is { } readOn)
+        {
+            <span class="trove-article-read">@($"Read {VideoFormat.Day(readOn)}")</span>
+        }
+        <span class="trove-article-tools">
+            <label class="trove-move">
+                <span class="trove-visually-hidden">@($"Move {Article.Title} to")</span>
+                <select @key="selectVersion" class="trove-state-select" value="@Article.State" @onchange="OnMoveSelected" title="Move to another column">
+                    @foreach (var state in ReadStates.All)
+                    {
+                        <option value="@state">@(state == Article.State ? $"In {state.Label()}" : $"Move to {state.Label()}")</option>
+                    }
+                </select>
+            </label>
+            @if (Article.CanRemove)
+            {
+                <button type="button" class="trove-button is-small is-quiet trove-article-remove" @onclick="() => OnRemove.InvokeAsync(Article)" aria-label="@($"Remove {Article.Title}")">Remove</button>
+            }
+        </span>
+    </div>
+</article>
+
+@code {
+    // As on the video card: a pick that doesn't change the bound value (a failed save) would otherwise stay showing.
+    private int selectVersion;
+
+    [Parameter, EditorRequired] public Article Article { get; set; } = default!;
+
+    [Parameter] public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
+
+    [Parameter] public EventCallback<(Article Article, ReadState State)> OnMove { get; set; }
+
+    [Parameter] public EventCallback<Article> OnRemove { get; set; }
+
+    [Parameter] public EventCallback<Article> OnAddToCora { get; set; }
+
+    /// <summary>CORA is reading this one's page now; the button waits.</summary>
+    [Parameter] public bool AddingToCora { get; set; }
+
+    private static string AddLabel(CoraKnowledge cora) => cora.Action == CoraAction.Retry ? "Try again" : "Add to CORA";
+
+    private static string OpenLabel(CoraKnowledge cora) => cora.Action switch
+    {
+        CoraAction.CheckText => "Check text",
+        CoraAction.Review => "Review in CORA",
+        _ => "View in CORA",
+    };
+
+    // The badge's colour: green when it's in, blue when it waits on you, amber while CORA works, red when it failed.
+    private static string Tone(CoraKnowledge cora) => cora switch
+    {
+        { State: KnowledgeState.InCora } => "incora",
+        { State: KnowledgeState.Failed } => "failed",
+        { NeedsYou: true } => "waiting",
+        { State: KnowledgeState.Queued } => "queued",
+        _ => "notincora",
+    };
+
+    private IEnumerable<string> Meta()
+    {
+        if (Article.Source == ArticleSource.Feed && !string.IsNullOrWhiteSpace(Article.SourceName))
+        {
+            yield return Article.SourceName;
+        }
+
+        // A personal blog's feed is usually named for its author; say the name once.
+        if (!string.IsNullOrWhiteSpace(Article.Author)
+            && !(Article.Source == ArticleSource.Feed && string.Equals(Article.Author, Article.SourceName, StringComparison.OrdinalIgnoreCase)))
+        {
+            yield return Article.Author;
+        }
+
+        yield return Article.PublishedAt is { } published
+            ? VideoFormat.Ago(published, Now)
+            : $"Saved {VideoFormat.Ago(Article.AddedAt, Now)}";
+    }
+
+    private async Task OnMoveSelected(ChangeEventArgs e)
+    {
+        selectVersion++;
+        if (Enum.TryParse<ReadState>(e.Value?.ToString(), out var state) && state != Article.State)
+        {
+            await OnMove.InvokeAsync((Article, state));
+        }
+    }
+}

@@ -252,8 +252,11 @@ h1:focus { outline: none; }
 .trove-button.is-quiet { background: transparent; border-color: transparent; color: var(--text-secondary-dark); }
 .trove-button.is-quiet:hover:not(:disabled) { border-color: var(--border-input); color: var(--text-primary-dark); }
 .trove-button[aria-pressed="true"] { border-color: var(--accent-pink); color: var(--accent-pink); }
+.trove-button.is-small { min-height: 28px; padding: 0 10px; border-radius: 6px; font-size: var(--type-micro-size); }
+.trove-button.is-accent { border-color: var(--accent-blue); color: var(--accent-blue); background: color-mix(in srgb, var(--accent-blue) 10%, var(--surface-elevated)); }
+.trove-button.is-accent:hover:not(:disabled) { background: color-mix(in srgb, var(--accent-blue) 18%, var(--surface-elevated)); }
 .trove-button:focus-visible, .trove-tab:focus-visible, .trove-stars:focus-visible, .trove-state-select:focus-visible,
-.trove-key-row input:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+.trove-key-row input:focus-visible, .trove-add-panel input:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
 .trove-chip.is-link, .trove-pill.is-link { color: var(--accent-blue); border-color: var(--accent-blue); text-decoration: none; }
 
 .trove-banner {
@@ -269,6 +272,9 @@ h1:focus { outline: none; }
     background: var(--surface-panel);
 }
 .trove-banner.is-error { border-left-color: var(--accent-error); color: var(--accent-error); }
+.trove-banner.is-ok { border-left-color: var(--accent-green); }
+.trove-banner-actions { display: inline-flex; align-items: center; gap: var(--space-xs); margin-left: auto; }
+.trove-visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 .trove-page-header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-md); }
 .trove-page-heading { display: flex; flex-direction: column; gap: var(--space-xs); }
@@ -376,6 +382,124 @@ h1:focus { outline: none; }
     cursor: pointer;
 }
 .trove-state-select:hover { color: var(--text-primary-dark); border-color: var(--accent-blue); }
+
+/* The reading list: the same columns as the playthrough board, with text cards and an add panel above. */
+.trove-main:has(.trove-article-board) { max-width: 1500px; }
+
+.trove-add-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    background: var(--surface-panel);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+}
+.trove-add-heading { font-size: var(--type-label-size); font-weight: var(--type-label-weight); color: var(--text-secondary-dark); font-family: var(--font-persona); }
+.trove-add-fields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-sm); }
+.trove-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.trove-field.is-url { flex: 3 1 320px; }
+.trove-field.is-title { flex: 2 1 220px; }
+.trove-field-label { font-size: var(--type-micro-size); font-weight: var(--type-label-weight); color: var(--text-secondary-dark); }
+.trove-field-optional { font-weight: normal; color: var(--text-machine); margin-left: 4px; }
+.trove-field input {
+    min-height: 40px;
+    padding: 0 var(--space-sm);
+    background: var(--surface-void);
+    color: var(--text-primary-dark);
+    border: 1px solid var(--border-input);
+    border-radius: 8px;
+    font: inherit;
+    font-size: var(--type-label-size);
+}
+.trove-field input::placeholder { color: var(--text-machine); }
+.trove-field.is-url input { font-family: var(--font-machine); }
+.trove-add-submit { min-height: 40px; padding: 0 var(--space-lg); }
+.trove-add-cora { display: flex; align-items: flex-start; gap: var(--space-sm); color: var(--text-secondary-dark); font-size: var(--type-label-size); line-height: 1.4; cursor: pointer; }
+.trove-add-cora strong { color: var(--text-primary-dark); font-weight: var(--type-label-weight); }
+.trove-add-cora input { flex: none; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--accent-blue); }
+
+.trove-article {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: var(--space-sm) var(--space-sm) 10px;
+    border-radius: 10px;
+    background: var(--surface-elevated);
+    border: 1px solid var(--border-subtle);
+    transition: border-color 120ms ease;
+}
+.trove-article:hover, .trove-article:focus-within { border-color: var(--border-input); }
+.trove-article p { margin: 0; }
+.trove-article-site {
+    color: var(--text-machine);
+    font-family: var(--font-machine);
+    font-size: var(--type-micro-size);
+    letter-spacing: 0.02em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.trove-article-title {
+    color: var(--text-primary-dark);
+    text-decoration: none;
+    font-weight: var(--type-subheading-weight);
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.trove-article-title:hover { color: var(--accent-blue); }
+.trove-article-summary {
+    color: var(--text-secondary-dark);
+    font-size: var(--type-label-size);
+    line-height: 1.45;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.trove-article-meta { color: var(--text-secondary-dark); font-size: var(--type-micro-size); }
+
+/* Where CORA is with the page: a badge and a line on what it means, with the one action that fits on the right. */
+.trove-article-cora {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: 2px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--surface-panel);
+    border: 1px solid var(--border-subtle);
+}
+.trove-article-cora.needs-you { border-color: color-mix(in srgb, var(--accent-blue) 40%, var(--border-subtle)); }
+.trove-cora-status { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; flex: 1 1 auto; min-width: 0; }
+.trove-cora-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary-dark);
+    font-size: var(--type-micro-size);
+    font-weight: var(--type-label-weight);
+    line-height: 18px;
+}
+.trove-cora-badge::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.trove-cora-badge.is-incora { color: var(--accent-green); }
+.trove-cora-badge.is-queued { color: var(--accent-yellow); }
+.trove-cora-badge.is-waiting { color: var(--accent-blue); }
+.trove-cora-badge.is-failed { color: var(--accent-error); }
+.trove-cora-badge.is-notincora::before { background: none; border: 1.5px solid currentColor; width: 7px; height: 7px; }
+.trove-cora-detail { color: var(--text-machine); font-size: var(--type-micro-size); line-height: 1.35; }
+.trove-cora-actions { display: flex; flex-direction: column; align-items: stretch; gap: 4px; flex: none; }
+
+/* The bottom row: the next step as a button, then the full move list and Remove on the right. */
+.trove-article-footer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); margin-top: 2px; min-height: 28px; }
+.trove-article-read { color: var(--text-machine); font-size: var(--type-micro-size); white-space: nowrap; }
+.trove-article-tools { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; }
+.trove-article-tools .trove-state-select { margin-left: 0; min-height: 28px; max-width: 130px; padding: 0 6px; }
+.trove-article-remove:hover:not(:disabled) { color: var(--accent-error); }
 
 .trove-stars { display: inline-flex; align-items: center; gap: 0; cursor: pointer; user-select: none; touch-action: manipulation; border-radius: 4px; align-self: flex-start; }
 .trove-stars > * { pointer-events: none; }
@@ -490,4 +614,6 @@ h1:focus { outline: none; }
     .trove-video-column.is-current { display: flex; }
     .trove-show-ignored { display: none; }
     .trove-page-header { align-items: flex-start; }
+    .trove-add-panel { padding: var(--space-sm); }
+    .trove-add-submit { flex: 1 1 100%; }
 }

@@ -1,0 +1,310 @@
+@page "/library/articles"
+@inject IArticleLibrary Library
+@inject TimeProvider Time
+@using System.Text.Json
+
+<PageTitle>Reading list · Trove</PageTitle>
+
+@if (Board is null)
+{
+    <h1>Reading list</h1>
+    @if (loadError is not null)
+    {
+        <div class="trove-banner is-error" role="alert">
+            <span>The reading list didn't load. @loadError</span>
+            <button type="button" class="trove-button" @onclick="LoadAsync">Try again</button>
+        </div>
+    }
+    else
+    {
+        <p class="trove-empty">Loading…</p>
+    }
+    return;
+}
+
+<header class="trove-page-header">
+    <div class="trove-page-heading">
+        <h1>Reading list</h1>
+        <p class="trove-lead">Links you save and posts from your feeds, with where CORA is on each one.</p>
+    </div>
+    <div class="trove-toolbar">
+        <a class="trove-button" href="@CoraLinks.Feeds">Feeds in CORA</a>
+        <button type="button" class="trove-button trove-show-ignored" aria-pressed="@(showIgnored ? "true" : "false")" @onclick="() => showIgnored = !showIgnored">
+            @(showIgnored ? "Hide ignored" : "Show ignored") <span class="trove-count">@Count(ReadState.Ignored)</span>
+        </button>
+    </div>
+</header>
+
+<form class="trove-add-panel" @onsubmit="AddAsync" @onsubmit:preventDefault aria-labelledby="add-article-heading">
+    <h2 id="add-article-heading" class="trove-add-heading">Add an article</h2>
+    <div class="trove-add-fields">
+        <label class="trove-field is-url">
+            <span class="trove-field-label">Link</span>
+            <input id="article-url" type="url" inputmode="url" autocomplete="off" placeholder="Paste a link"
+                   @bind="url" @bind:event="oninput" maxlength="2048" required />
+        </label>
+        <label class="trove-field is-title">
+            <span class="trove-field-label">Title <span class="trove-field-optional">optional</span></span>
+            <input id="article-title" type="text" autocomplete="off" placeholder="Uses the page's address if blank" @bind="title" @bind:event="oninput" maxlength="300" />
+        </label>
+        <button type="submit" class="trove-button is-primary trove-add-submit" disabled="@adding">@(adding ? "Adding…" : "Add to Read next")</button>
+    </div>
+    <label class="trove-add-cora">
+        <input type="checkbox" @bind="addToCora" />
+        <span><strong>Also send it to CORA.</strong> CORA pulls the page's text for you to check, then analyzes it into your knowledge.</span>
+    </label>
+</form>
+
+@if (Board.Feeds is { Error: { } feedError })
+{
+    <div class="trove-banner is-error" role="alert">
+        <span>New feed posts didn't come through. @feedError</span>
+        <a class="trove-button" href="@CoraLinks.Feeds">Open feeds in CORA</a>
+    </div>
+}
+
+@if (Board.KnowledgeError is { } knowledgeError)
+{
+    <div class="trove-banner" role="status">
+        <span>Couldn't check which articles are in CORA. @knowledgeError</span>
+        <button type="button" class="trove-button" @onclick="LoadAsync">Check again</button>
+    </div>
+}
+
+@if (message is not null)
+{
+    <div class="trove-banner @(messageIsError ? "is-error" : "is-ok")" role="@(messageIsError ? "alert" : "status")">
+        <span>@message</span>
+        <span class="trove-banner-actions">
+            @if (messageLink is { } link)
+            {
+                <a class="trove-button is-small" href="@link.Href">@link.Label</a>
+            }
+            <button type="button" class="trove-button is-small is-quiet trove-banner-dismiss" @onclick="() => message = null" aria-label="Dismiss">Dismiss</button>
+        </span>
+    </div>
+}
+
+<div class="trove-tabs" role="tablist" aria-label="Columns">
+    @foreach (var state in ReadStates.All)
+    {
+        <button type="button" role="tab" class="trove-tab @(state == tab ? "is-active" : "")" aria-selected="@(state == tab ? "true" : "false")" @onclick="() => tab = state">
+            @state.Label() <span class="trove-count">@Count(state)</span>
+        </button>
+    }
+</div>
+
+<section class="trove-video-board trove-article-board">
+    @foreach (var state in VisibleColumns)
+    {
+        <div class="trove-video-column @(state == tab ? "is-current" : "")" aria-label="@state.Label()">
+            <h2 class="trove-column-head">@state.Label() <span class="trove-count-pill">@Count(state)</span></h2>
+            @foreach (var article in InColumn(state))
+            {
+                <ArticleCard @key="article.Id" Article="article" Now="now" OnMove="MoveAsync" OnRemove="RemoveAsync"
+                             OnAddToCora="AddToCoraAsync" AddingToCora="addingToCora.Contains(article.Id)" />
+            }
+            @if (Count(state) == 0)
+            {
+                <p class="trove-empty">@Empty(state)</p>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private bool showIgnored;
+    private bool adding;
+    private bool addToCora;
+    private readonly HashSet<string> addingToCora = [];
+    private string url = "";
+    private string title = "";
+    private string? message;
+    private bool messageIsError;
+    private (string Label, string Href)? messageLink;
+    private string? loadError;
+    private ReadState tab = ReadState.ReadNext;
+    private DateTimeOffset now;
+
+    private ArticleBoard? Board;
+
+    private IEnumerable<ReadState> VisibleColumns =>
+        showIgnored || tab == ReadState.Ignored ? ReadStates.All : ReadStates.Columns;
+
+    // The browser's own date, so an article finished late in the evening is recorded on the person's day.
+    private DateOnly Today => DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+
+    protected override async Task OnInitializedAsync()
+    {
+        now = Time.GetUtcNow();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loadError = null;
+        try
+        {
+            Board = await Library.GetBoardAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            loadError = ex.Message;
+        }
+        catch (InvalidOperationException ex)
+        {
+            loadError = ex.Message;
+        }
+        catch (JsonException)
+        {
+            loadError = UnreadableAnswer;
+        }
+    }
+
+    // An answer in a shape this app doesn't know, most likely a newer module than this app.
+    private const string UnreadableAnswer = "The answer from CORA was in a form this app couldn't read. Reloading the page may fix it.";
+
+    private int Count(ReadState state) => Board?.Articles.Count(a => a.State == state) ?? 0;
+
+    // Done is most recently read first; everything else arrives newest first.
+    private IEnumerable<Article> InColumn(ReadState state)
+    {
+        var articles = Board!.Articles.Where(a => a.State == state);
+        return state == ReadState.Done ? articles.OrderByDescending(a => a.ReadOn) : articles;
+    }
+
+    private static string Empty(ReadState state) => state switch
+    {
+        ReadState.New => "Posts from feeds you send to Trove land here.",
+        ReadState.ReadNext => "Add a link above to read it later.",
+        ReadState.Reading => "Nothing open right now.",
+        ReadState.Done => "Finished articles land here.",
+        _ => "Nothing ignored.",
+    };
+
+    private async Task AddAsync()
+    {
+        adding = true;
+        message = null;
+        try
+        {
+            var result = await Library.AddAsync(new AddArticleRequest(
+                url.Trim(), string.IsNullOrWhiteSpace(title) ? null : title.Trim(), addToCora));
+            Board = Board! with { Articles = [result.Article, .. Board.Articles.Where(a => a.Id != result.Article.Id)] };
+            var saved = result.AlreadySaved
+                ? $"That link was already on your list. It's in {result.Article.State.Label()}."
+                : "Added to Read next.";
+            if (result.CoraError is { } coraError)
+            {
+                Show($"{saved} {coraError}", isError: true);
+            }
+            else if (addToCora && result.Article.Cora is { } cora)
+            {
+                Show($"{saved} {CoraOutcome(cora)}", isError: false, LinkFor(cora));
+            }
+            else
+            {
+                Show(saved, isError: false);
+            }
+            tab = result.Article.State;
+            url = "";
+            title = "";
+        }
+        catch (ArgumentException ex)
+        {
+            Show(ex.Message, isError: true);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        {
+            Show($"That link didn't save. {ex.Message}", isError: true);
+        }
+        catch (JsonException)
+        {
+            Show($"That link may have saved. {UnreadableAnswer}", isError: true);
+        }
+        finally
+        {
+            adding = false;
+        }
+    }
+
+    private Task MoveAsync((Article Article, ReadState State) move) =>
+        SaveAsync(async () =>
+        {
+            var saved = await Library.MoveAsync(move.Article.Id, new MoveArticleRequest(move.State, Today));
+            Board = Board! with { Articles = [.. Board.Articles.Select(a => a.Id == saved.Id ? saved : a)] };
+        });
+
+    private async Task AddToCoraAsync(Article article)
+    {
+        message = null;
+        addingToCora.Add(article.Id);
+        try
+        {
+            var saved = await Library.AddToCoraAsync(article.Id);
+            // Only CORA's part: the card may have moved while CORA read the page, and this answer knows the column from
+            // before.
+            Board = Board! with { Articles = [.. Board.Articles.Select(a => a.Id == saved.Id ? a with { Cora = saved.Cora } : a)] };
+            if (saved.Cora is { } cora)
+            {
+                Show(CoraOutcome(cora), isError: false, LinkFor(cora));
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
+        {
+            Show(ex.Message, isError: true);
+        }
+        catch (JsonException)
+        {
+            Show(UnreadableAnswer, isError: true);
+        }
+        finally
+        {
+            addingToCora.Remove(article.Id);
+        }
+    }
+
+    // What adding a page to CORA came to, said once in the banner; the card keeps the state.
+    private static string CoraOutcome(CoraKnowledge cora) => cora switch
+    {
+        { State: KnowledgeState.InCora } => "CORA already has this page in your knowledge.",
+        { State: KnowledgeState.Queued, ChangesetStatus: "unread" } => "CORA has the page. Check its text there, then press Analyze.",
+        { State: KnowledgeState.Queued } => "CORA has the page.",
+        _ => "CORA couldn't read this page.",
+    };
+
+    private Task RemoveAsync(Article article) =>
+        SaveAsync(async () =>
+        {
+            await Library.RemoveAsync(article.Id);
+            Board = Board! with { Articles = [.. Board.Articles.Where(a => a.Id != article.Id)] };
+        });
+
+    private async Task SaveAsync(Func<Task> change)
+    {
+        message = null;
+        try
+        {
+            await change();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
+        {
+            Show($"That change didn't save. {ex.Message}", isError: true);
+        }
+        catch (JsonException)
+        {
+            Show(UnreadableAnswer, isError: true);
+        }
+    }
+
+    // The banner's one link into CORA, when the card's row opens CORA too.
+    private static (string Label, string Href)? LinkFor(CoraKnowledge cora) =>
+        CoraLinks.For(cora) is { } href ? (cora.Action == CoraAction.CheckText ? "Check text" : "View in CORA", href) : null;
+
+    private void Show(string text, bool isError, (string Label, string Href)? link = null)
+    {
+        message = text;
+        messageIsError = isError;
+        messageLink = link;
+    }
+}
