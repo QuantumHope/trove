@@ -69,6 +69,13 @@
                     }
                     <span>@string.Join(" · ", Meta())</span>
                 </p>
+                @if (moved is { } from)
+                {
+                    <p class="trove-viewer-moved" role="status">
+                        <span>Moved to In progress.</span>
+                        <button type="button" class="trove-link-button" @onclick="() => UndoAsync(from)">Undo</button>
+                    </p>
+                }
             </div>
             <div class="trove-viewer-actions">
                 @if (video.State == WatchState.Done)
@@ -88,14 +95,7 @@
             <StarRatingInput Value="video.Rating" ValueChanged="RateAsync" Label="@($"Your rating for {title.Game}")" />
         }
 
-        @if (moved is { } from)
-        {
-            <div class="trove-banner trove-viewer-note" role="status">
-                <span>Moved to In progress.</span>
-                <button type="button" class="trove-button is-small is-quiet" @onclick="() => UndoAsync(from)">Undo</button>
-            </div>
-        }
-        else if (ended && video.State != WatchState.Done)
+        @if (ended && video.State != WatchState.Done)
         {
             <div class="trove-banner trove-viewer-note" role="status">
                 <span>That's the end of the video.</span>

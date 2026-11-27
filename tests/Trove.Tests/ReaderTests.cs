@@ -43,12 +43,12 @@ public sealed class ReaderTests : BunitContext
         var page = Open("saved");
 
         Assert.Equal(("saved", ReadState.Reading), (library.Moves[0].Id, library.Moves[0].Request.State));
-        Assert.Contains("Moved to Reading", page.Find(".trove-viewer-note").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Moved to Reading", page.Find(".trove-viewer-moved").TextContent, StringComparison.Ordinal);
 
-        page.Find(".trove-viewer-note button").Click();
+        page.Find(".trove-viewer-moved button").Click();
 
         Assert.Equal(ReadState.ReadNext, library.Moves[1].Request.State);
-        Assert.Empty(page.FindAll(".trove-viewer-note"));
+        Assert.Empty(page.FindAll(".trove-viewer-moved"));
     }
 
     [Fact]

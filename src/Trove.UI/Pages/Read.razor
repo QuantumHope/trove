@@ -41,6 +41,13 @@
             <div class="trove-viewer-heading">
                 <p class="trove-article-site">@article.Site</p>
                 <h1 class="trove-viewer-title">@article.Title</h1>
+                @if (moved is { } from)
+                {
+                    <p class="trove-viewer-moved" role="status">
+                        <span>Moved to Reading.</span>
+                        <button type="button" class="trove-link-button" @onclick="() => UndoAsync(from)">Undo</button>
+                    </p>
+                }
             </div>
             <div class="trove-viewer-actions">
                 @if (article.State.Forward() is { } forward && forward.To != ReadState.Reading)
@@ -51,17 +58,13 @@
                 {
                     <span class="trove-viewer-state">@($"Read {VideoFormat.Day(readOn)}")</span>
                 }
-                <a class="trove-button trove-reader-newtab" href="@article.Url" target="_blank" rel="noopener noreferrer">Open in new tab ↗</a>
+                @if (blockedReason is null)
+                {
+                    <a class="trove-button trove-reader-newtab" href="@article.Url" target="_blank" rel="noopener noreferrer">Open in new tab ↗</a>
+                }
             </div>
         </div>
 
-        @if (moved is { } from)
-        {
-            <div class="trove-banner trove-viewer-note" role="status">
-                <span>Moved to Reading.</span>
-                <button type="button" class="trove-button is-small is-quiet" @onclick="() => UndoAsync(from)">Undo</button>
-            </div>
-        }
 
         @if (message is not null)
         {

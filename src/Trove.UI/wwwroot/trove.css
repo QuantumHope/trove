@@ -560,6 +560,8 @@ h1:focus { outline: none; }
 .trove-main:has(.trove-viewer.is-video) { max-width: 1100px; }
 .trove-main:has(.trove-viewer.is-article) { max-width: 1200px; }
 .trove-viewer { display: flex; flex-direction: column; gap: var(--space-md); }
+/* The video fits the window's height, so its title and buttons stay in view without scrolling. */
+.trove-viewer.is-video { width: min(100%, max(640px, calc((100dvh - 260px) * 16 / 9))); align-self: center; }
 .trove-back { align-self: flex-start; color: var(--text-secondary-dark); font-size: var(--type-label-size); text-decoration: none; }
 .trove-back:hover { color: var(--text-primary-dark); }
 .trove-viewer-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-sm) var(--space-md); }
@@ -568,6 +570,10 @@ h1:focus { outline: none; }
 .trove-viewer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
 .trove-viewer-state { color: var(--text-machine); font-size: var(--type-label-size); }
 .trove-viewer-note { padding-top: var(--space-xs); padding-bottom: var(--space-xs); }
+.trove-viewer-moved { margin: 0; display: flex; align-items: baseline; gap: var(--space-sm); color: var(--text-machine); font-size: var(--type-label-size); }
+.trove-link-button { padding: 0; border: 0; background: none; color: var(--accent-blue); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.trove-link-button:hover { color: var(--text-primary-dark); }
+.trove-link-button:focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; border-radius: 2px; }
 .trove-viewer-panel {
     display: flex;
     flex-direction: column;
@@ -632,7 +638,7 @@ h1:focus { outline: none; }
 
 .trove-reader-frame {
     position: relative;
-    height: calc(100dvh - 260px);
+    height: calc(100dvh - 330px);
     min-height: 420px;
     overflow: hidden;
     border: 1px solid var(--border-input);
@@ -739,10 +745,11 @@ h1:focus { outline: none; }
 
 @media (max-width: 767px) {
     .trove-viewer { gap: var(--space-sm); }
+    .trove-viewer.is-video { width: 100%; }
     .trove-player { border-radius: 0; border-left: 0; border-right: 0; margin: 0 calc(-1 * var(--space-md)); width: calc(100% + 2 * var(--space-md)); }
     .trove-player-play { width: 60px; height: 60px; }
     .trove-viewer-title { font-size: var(--type-subheading-size); }
     .trove-viewer-actions { width: 100%; }
     .trove-viewer-actions .trove-button { flex: 1 1 auto; justify-content: center; }
-    .trove-reader-frame { height: calc(100dvh - 300px); min-height: 360px; border-radius: 8px; }
+    .trove-reader-frame { height: calc(100dvh - 345px); min-height: 360px; border-radius: 8px; }
 }

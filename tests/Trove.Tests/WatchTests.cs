@@ -53,9 +53,9 @@ public sealed class WatchTests : BunitContext
 
         page.InvokeAsync(() => page.Instance.OnPlaying());
         Assert.Equal(("a", new MoveRequest(WatchState.InProgress, null)), library.Moves.Single());
-        Assert.Contains("Moved to In progress", page.Find(".trove-viewer-note").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Moved to In progress", page.Find(".trove-viewer-moved").TextContent, StringComparison.Ordinal);
 
-        page.Find(".trove-viewer-note button").Click();
+        page.Find(".trove-viewer-moved button").Click();
         Assert.Equal(("a", new MoveRequest(WatchState.New, null)), library.Moves[1]);
 
         // Pausing and playing again doesn't move it a second time.
