@@ -28,7 +28,7 @@
                     </button>
                     @if (cora.ChangesetId is { } failedId)
                     {
-                        <a class="trove-button is-small is-quiet trove-cora-open" href="@CoraLinks.ChangesetText(failedId)" aria-label="@($"View {Article.Title} in CORA")">View in CORA</a>
+                        <a class="trove-button is-small is-quiet trove-cora-open" href="@CoraLinks.Changeset(failedId)" aria-label="@($"View {Article.Title} in CORA")">View in CORA</a>
                     }
                 }
                 else if (CoraLinks.For(cora) is { } href)

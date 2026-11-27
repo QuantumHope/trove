@@ -35,12 +35,9 @@ public sealed class HttpArticleLibrary(HttpClient http) : IArticleLibrary
 
     public async Task<Article> AddToCoraAsync(string id, CancellationToken cancellationToken = default)
     {
+        // A 502 never gets here: the handler under this client turns it into a message, with the module's own words when
+        // it was CORA the module couldn't reach.
         using var response = await http.PostAsync($"api/articles/{Uri.EscapeDataString(id)}/add-to-cora", null, cancellationToken);
-        if (response.StatusCode == HttpStatusCode.BadGateway)
-        {
-            throw new HttpRequestException(await ErrorAsync(response, "CORA couldn't be reached. Try again in a moment."));
-        }
-
         await ThrowIfRefusedAsync(response, "CORA couldn't read this page.");
         return await response.Content.ReadFromJsonAsync<Article>(cancellationToken)
             ?? throw new InvalidOperationException("The server sent no article.");
@@ -73,7 +70,7 @@ public sealed class HttpArticleLibrary(HttpClient http) : IArticleLibrary
         try
         {
             using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            return body.RootElement.TryGetProperty("detail", out var detail) && detail.GetString() is { Length: > 0 } text ? text : fallback;
+            return CoraProblems.Detail(body.RootElement) ?? fallback;
         }
         catch (JsonException)
         {

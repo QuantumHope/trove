@@ -1,13 +1,15 @@
 using System.Net;
 using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Components;
+using Trove.UI;
 
 namespace Trove.App;
 
 /// <summary>
 /// Every call to CORA goes through here. CORA's cookie answers 401 (not a sign-in redirect) only when the request
 /// says it is an API call, and CORA turns away writes without X-Requested-With, so both headers go on every request.
-/// A 401 means the CORA sign-in has lapsed, so the page goes to CORA's sign-in and comes back here afterwards.
+/// A 401 means the CORA sign-in has lapsed, so the page goes to CORA's sign-in and comes back here afterwards. A 502
+/// says which side couldn't be reached; see <see cref="CoraProblems.GatewayReason"/>.
 /// </summary>
 public sealed class CoraApiHandler(NavigationManager navigation) : DelegatingHandler
 {
@@ -25,7 +27,10 @@ public sealed class CoraApiHandler(NavigationManager navigation) : DelegatingHan
             case HttpStatusCode.Conflict:
                 throw new HttpRequestException("The Trove module is turned off in CORA (Admin → Modules).", null, response.StatusCode);
             case HttpStatusCode.BadGateway:
-                throw new HttpRequestException("CORA couldn't reach the Trove module.", null, response.StatusCode);
+                throw new HttpRequestException(
+                    CoraProblems.GatewayReason(await response.Content.ReadAsStringAsync(cancellationToken))
+                        ?? "CORA couldn't reach the Trove module.",
+                    null, response.StatusCode);
             default:
                 return response;
         }

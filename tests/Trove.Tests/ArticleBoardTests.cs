@@ -280,6 +280,39 @@ public sealed class ArticleBoardTests : BunitContext
     private static Article Saved(string id, string url, string title, ReadState state, ArticleSource source = ArticleSource.Link, string? sourceName = null) =>
         new(id, url, title, new Uri(url).Host, null, null, null, source, sourceName, Added, state, null);
 
+    [Fact]
+    public void A_list_in_a_shape_this_app_cant_read_says_so_and_tries_again()
+    {
+        library.LoadException = new System.Text.Json.JsonException("Unknown ReadState.");
+        var page = Render<Articles>();
+
+        Assert.Contains("couldn't read", page.Find("[role=alert]").TextContent, StringComparison.Ordinal);
+
+        library.LoadException = null;
+        page.FindAll("button").Single(b => b.TextContent == "Try again").Click();
+
+        Assert.NotNull(page.Find("[data-article=saved]"));
+    }
+
+    [Fact]
+    public void A_card_moved_while_CORA_reads_it_stays_where_it_was_moved()
+    {
+        library.Knowledge["saved"] = new CoraKnowledge(KnowledgeState.NotInCora);
+        library.CoraGate = new TaskCompletionSource();
+        var page = Render<Articles>();
+
+        page.Find("[data-article=saved] .trove-cora-add").Click();
+        page.Find("[data-article=saved] .trove-article-forward").Click();
+        library.CoraGate.SetResult();
+
+        page.WaitForAssertion(() =>
+        {
+            var card = page.Find("[data-article=saved]");
+            Assert.Equal("Mark done", card.QuerySelector(".trove-article-forward")!.TextContent.Trim());
+            Assert.Equal("Needs your check", card.QuerySelector(".trove-cora-badge")!.TextContent.Trim());
+        });
+    }
+
     private sealed class FakeLibrary : IArticleLibrary
     {
         private readonly List<Article> articles =
@@ -289,6 +322,11 @@ public sealed class ArticleBoardTests : BunitContext
         ];
 
         public string? LoadFailure { get; set; }
+
+        public Exception? LoadException { get; set; }
+
+        /// <summary>When set, Add to CORA waits for this before answering, with the article as it stood when pressed.</summary>
+        public TaskCompletionSource? CoraGate { get; set; }
 
         public FeedSyncStatus? Feeds { get; set; }
 
@@ -315,7 +353,9 @@ public sealed class ArticleBoardTests : BunitContext
         private Article WithCora(Article a) => a with { Cora = Knowledge.GetValueOrDefault(a.Id) };
 
         public Task<ArticleBoard> GetBoardAsync(CancellationToken cancellationToken = default) =>
-            LoadFailure is { } failure
+            LoadException is { } thrown
+                ? Task.FromException<ArticleBoard>(thrown)
+                : LoadFailure is { } failure
                 ? Task.FromException<ArticleBoard>(new HttpRequestException(failure))
                 : Task.FromResult(new ArticleBoard(
                     [.. articles.Select(WithCora), .. Extra is null ? Array.Empty<Article>() : [Extra]], Feeds, KnowledgeError));
@@ -366,7 +406,14 @@ public sealed class ArticleBoardTests : BunitContext
             }
 
             Knowledge[id] = new CoraKnowledge(KnowledgeState.Queued, "c9", "unread");
-            return Task.FromResult(WithCora(articles.Single(a => a.Id == id)));
+            var asPressed = WithCora(articles.Single(a => a.Id == id));
+            return CoraGate is { } gate ? AnswerLaterAsync(gate, asPressed) : Task.FromResult(asPressed);
+        }
+
+        private static async Task<Article> AnswerLaterAsync(TaskCompletionSource gate, Article answer)
+        {
+            await gate.Task;
+            return answer;
         }
 
         public Task RemoveAsync(string id, CancellationToken cancellationToken = default)

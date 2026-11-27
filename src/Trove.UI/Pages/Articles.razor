@@ -1,6 +1,7 @@
 @page "/library/articles"
 @inject IArticleLibrary Library
 @inject TimeProvider Time
+@using System.Text.Json
 
 <PageTitle>Reading list · Trove</PageTitle>
 
@@ -150,7 +151,18 @@
         {
             loadError = ex.Message;
         }
+        catch (InvalidOperationException ex)
+        {
+            loadError = ex.Message;
+        }
+        catch (JsonException)
+        {
+            loadError = UnreadableAnswer;
+        }
     }
+
+    // An answer in a shape this app doesn't know, most likely a newer module than this app.
+    private const string UnreadableAnswer = "The answer from CORA was in a form this app couldn't read. Reloading the page may fix it.";
 
     private int Count(ReadState state) => Board?.Articles.Count(a => a.State == state) ?? 0;
 
@@ -202,9 +214,13 @@
         {
             Show(ex.Message, isError: true);
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
         {
             Show($"That link didn't save. {ex.Message}", isError: true);
+        }
+        catch (JsonException)
+        {
+            Show($"That link may have saved. {UnreadableAnswer}", isError: true);
         }
         finally
         {
@@ -226,7 +242,9 @@
         try
         {
             var saved = await Library.AddToCoraAsync(article.Id);
-            Board = Board! with { Articles = [.. Board.Articles.Select(a => a.Id == saved.Id ? saved : a)] };
+            // Only CORA's part: the card may have moved while CORA read the page, and this answer knows the column from
+            // before.
+            Board = Board! with { Articles = [.. Board.Articles.Select(a => a.Id == saved.Id ? a with { Cora = saved.Cora } : a)] };
             if (saved.Cora is { } cora)
             {
                 Show(CoraOutcome(cora), isError: false, LinkFor(cora));
@@ -235,6 +253,10 @@
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
         {
             Show(ex.Message, isError: true);
+        }
+        catch (JsonException)
+        {
+            Show(UnreadableAnswer, isError: true);
         }
         finally
         {
@@ -268,6 +290,10 @@
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
         {
             Show($"That change didn't save. {ex.Message}", isError: true);
+        }
+        catch (JsonException)
+        {
+            Show(UnreadableAnswer, isError: true);
         }
     }
 
