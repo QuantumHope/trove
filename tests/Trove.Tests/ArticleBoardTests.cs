@@ -26,7 +26,7 @@ public sealed class ArticleBoardTests : BunitContext
         page.Find("form").Submit();
 
         Assert.Equal(new AddArticleRequest("https://example.com/new", "A new one", AddToCora: false), library.Adds.Single());
-        Assert.Contains("Saved to Read next", page.Find("[role=status]").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Added to Read next", page.Find("[role=status]").TextContent, StringComparison.Ordinal);
         Assert.Contains("A new one", page.Find("[aria-label='Read next']").TextContent, StringComparison.Ordinal);
         Assert.Equal("", page.Find("#article-url").GetAttribute("value"));
     }
@@ -129,7 +129,7 @@ public sealed class ArticleBoardTests : BunitContext
         var page = Render<Articles>();
 
         Assert.Empty(page.FindAll("[role=alert]"));
-        Assert.Contains(page.FindAll("a"), a => a.GetAttribute("href") == "/admin/feeds" && a.TextContent.Contains("Manage feeds", StringComparison.Ordinal));
+        Assert.Contains(page.FindAll("a"), a => a.GetAttribute("href") == "/admin/feeds" && a.TextContent.Contains("Feeds in CORA", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -151,12 +151,16 @@ public sealed class ArticleBoardTests : BunitContext
 
         var saved = page.Find("[data-article=saved] .trove-article-cora");
         Assert.Contains("In CORA", saved.TextContent, StringComparison.Ordinal);
-        Assert.Equal("/admin/changesets/c1", saved.QuerySelector("a")!.GetAttribute("href"));
+        var view = saved.QuerySelector("a")!;
+        Assert.Equal("View in CORA", view.TextContent.Trim());
+        Assert.Equal("/knowledge/library/c1", view.GetAttribute("href"));
         Assert.Null(saved.QuerySelector("button"));
 
         var feed = page.Find("[data-article=feed] .trove-article-cora");
-        Assert.Contains("Queued in CORA", feed.TextContent, StringComparison.Ordinal);
-        Assert.Contains("ready to review", feed.TextContent, StringComparison.Ordinal);
+        Assert.Contains("Ready to review", feed.TextContent, StringComparison.Ordinal);
+        var review = feed.QuerySelector("a")!;
+        Assert.Equal("Review in CORA", review.TextContent.Trim());
+        Assert.Equal("/admin/changesets/c2", review.GetAttribute("href"));
     }
 
     [Fact]
@@ -169,9 +173,52 @@ public sealed class ArticleBoardTests : BunitContext
 
         Assert.Equal(["saved"], library.CoraAdds);
         var cora = page.Find("[data-article=saved] .trove-article-cora");
-        Assert.Contains("Queued in CORA", cora.TextContent, StringComparison.Ordinal);
-        Assert.Contains("check its text, then Analyze", cora.TextContent, StringComparison.Ordinal);
-        Assert.Contains("Check its text there, then press Analyze", page.Find("[role=status]").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Needs your check", cora.TextContent, StringComparison.Ordinal);
+        Assert.Equal("/admin/changesets/c9/document", cora.QuerySelector("a")!.GetAttribute("href"));
+        Assert.Null(cora.QuerySelector("button"));
+        var status = page.Find("[role=status]");
+        Assert.Contains("Check its text there, then press Analyze", status.TextContent, StringComparison.Ordinal);
+        Assert.Equal("/admin/changesets/c9/document", status.QuerySelector("a")!.GetAttribute("href"));
+    }
+
+    [Fact]
+    public void A_page_CORA_is_still_reading_or_bringing_in_offers_only_what_fits()
+    {
+        library.Knowledge["saved"] = new CoraKnowledge(KnowledgeState.Queued, "c4", "drafting");
+        library.Knowledge["feed"] = new CoraKnowledge(KnowledgeState.Queued);
+        var page = Render<Articles>();
+
+        var saved = page.Find("[data-article=saved] .trove-article-cora");
+        Assert.Contains("CORA is reading", saved.TextContent, StringComparison.Ordinal);
+        Assert.Equal("/admin/changesets/c4", saved.QuerySelector("a")!.GetAttribute("href"));
+
+        var feed = page.Find("[data-article=feed] .trove-article-cora");
+        Assert.Contains("On its way to CORA", feed.TextContent, StringComparison.Ordinal);
+        Assert.Null(feed.QuerySelector("a"));
+        Assert.Null(feed.QuerySelector("button"));
+    }
+
+    [Fact]
+    public void Each_card_offers_the_next_step_as_one_button()
+    {
+        var page = Render<Articles>();
+
+        page.Find("[data-article=saved] .trove-article-forward").Click();
+        Assert.Equal(("saved", ReadState.Reading), (library.Moves.Last().Id, library.Moves.Last().Request.State));
+
+        page.Find("[data-article=feed] .trove-article-forward").Click();
+        Assert.Equal(("feed", ReadState.ReadNext), (library.Moves.Last().Id, library.Moves.Last().Request.State));
+    }
+
+    [Fact]
+    public void A_new_feed_post_can_be_ignored_from_its_card()
+    {
+        var page = Render<Articles>();
+
+        page.Find("[data-article=feed] .trove-article-ignore").Click();
+
+        Assert.Equal(("feed", ReadState.Ignored), (library.Moves.Last().Id, library.Moves.Last().Request.State));
+        Assert.Empty(page.FindAll("[data-article=saved] .trove-article-ignore"));
     }
 
     [Fact]
@@ -202,7 +249,7 @@ public sealed class ArticleBoardTests : BunitContext
 
         Assert.True(library.Adds.Single().AddToCora);
         var status = page.Find("[role=status]").TextContent;
-        Assert.Contains("Saved to Read next. Queued in CORA.", status, StringComparison.Ordinal);
+        Assert.Contains("Added to Read next. CORA has the page.", status, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -215,7 +262,7 @@ public sealed class ArticleBoardTests : BunitContext
         page.Find(".trove-add-cora input").Change(true);
         page.Find("form").Submit();
 
-        Assert.Contains("Saved to Read next. CORA couldn't read this page.", page.Find("[role=alert]").TextContent, StringComparison.Ordinal);
+        Assert.Contains("Added to Read next. CORA couldn't read this page.", page.Find("[role=alert]").TextContent, StringComparison.Ordinal);
         Assert.NotNull(page.Find("[data-article=new]"));
     }
 

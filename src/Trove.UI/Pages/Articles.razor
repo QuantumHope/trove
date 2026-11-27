@@ -24,26 +24,34 @@
 <header class="trove-page-header">
     <div class="trove-page-heading">
         <h1>Reading list</h1>
-        <p class="trove-lead">Articles to read. Paste a link to save it; it goes straight to Read next. Posts from feeds you send to Trove arrive in New. Each card says whether CORA has read it into your knowledge.</p>
+        <p class="trove-lead">Links you save and posts from your feeds, with where CORA is on each one.</p>
     </div>
     <div class="trove-toolbar">
-        <a class="trove-button is-quiet" href="@CoraLinks.Feeds">Manage feeds in CORA</a>
-        <button type="button" class="trove-button is-quiet trove-show-ignored" aria-pressed="@(showIgnored ? "true" : "false")" @onclick="() => showIgnored = !showIgnored">
-            Ignored <span class="trove-count">@Count(ReadState.Ignored)</span>
+        <a class="trove-button" href="@CoraLinks.Feeds">Feeds in CORA</a>
+        <button type="button" class="trove-button trove-show-ignored" aria-pressed="@(showIgnored ? "true" : "false")" @onclick="() => showIgnored = !showIgnored">
+            @(showIgnored ? "Hide ignored" : "Show ignored") <span class="trove-count">@Count(ReadState.Ignored)</span>
         </button>
     </div>
 </header>
 
-<form class="trove-add-article" @onsubmit="AddAsync" @onsubmit:preventDefault>
-    <label class="trove-visually-hidden" for="article-url">Link</label>
-    <input id="article-url" type="url" inputmode="url" autocomplete="off" placeholder="https://…" @bind="url" @bind:event="oninput" maxlength="2048" required />
-    <label class="trove-visually-hidden" for="article-title">Title (optional)</label>
-    <input id="article-title" type="text" autocomplete="off" placeholder="Title (optional)" @bind="title" @bind:event="oninput" maxlength="300" />
+<form class="trove-add-panel" @onsubmit="AddAsync" @onsubmit:preventDefault aria-labelledby="add-article-heading">
+    <h2 id="add-article-heading" class="trove-add-heading">Add an article</h2>
+    <div class="trove-add-fields">
+        <label class="trove-field is-url">
+            <span class="trove-field-label">Link</span>
+            <input id="article-url" type="url" inputmode="url" autocomplete="off" placeholder="Paste a link"
+                   @bind="url" @bind:event="oninput" maxlength="2048" required />
+        </label>
+        <label class="trove-field is-title">
+            <span class="trove-field-label">Title <span class="trove-field-optional">optional</span></span>
+            <input id="article-title" type="text" autocomplete="off" placeholder="Uses the page's address if blank" @bind="title" @bind:event="oninput" maxlength="300" />
+        </label>
+        <button type="submit" class="trove-button is-primary trove-add-submit" disabled="@adding">@(adding ? "Adding…" : "Add to Read next")</button>
+    </div>
     <label class="trove-add-cora">
         <input type="checkbox" @bind="addToCora" />
-        <span>Also add to CORA</span>
+        <span><strong>Also send it to CORA.</strong> CORA pulls the page's text for you to check, then analyzes it into your knowledge.</span>
     </label>
-    <button type="submit" class="trove-button is-primary" disabled="@(adding || string.IsNullOrWhiteSpace(url))">@(adding ? "Saving…" : "Save")</button>
 </form>
 
 @if (Board.Feeds is { Error: { } feedError })
@@ -64,7 +72,16 @@
 
 @if (message is not null)
 {
-    <div class="trove-banner @(messageIsError ? "is-error" : "is-ok")" role="@(messageIsError ? "alert" : "status")"><span>@message</span></div>
+    <div class="trove-banner @(messageIsError ? "is-error" : "is-ok")" role="@(messageIsError ? "alert" : "status")">
+        <span>@message</span>
+        <span class="trove-banner-actions">
+            @if (messageLink is { } link)
+            {
+                <a class="trove-button is-small" href="@link.Href">@link.Label</a>
+            }
+            <button type="button" class="trove-button is-small is-quiet trove-banner-dismiss" @onclick="() => message = null" aria-label="Dismiss">Dismiss</button>
+        </span>
+    </div>
 }
 
 <div class="trove-tabs" role="tablist" aria-label="Columns">
@@ -103,6 +120,7 @@
     private string title = "";
     private string? message;
     private bool messageIsError;
+    private (string Label, string Href)? messageLink;
     private string? loadError;
     private ReadState tab = ReadState.ReadNext;
     private DateTimeOffset now;
@@ -146,7 +164,7 @@
     private static string Empty(ReadState state) => state switch
     {
         ReadState.New => "Posts from feeds you send to Trove land here.",
-        ReadState.ReadNext => "Save a link above to read it later.",
+        ReadState.ReadNext => "Add a link above to read it later.",
         ReadState.Reading => "Nothing open right now.",
         ReadState.Done => "Finished articles land here.",
         _ => "Nothing ignored.",
@@ -163,14 +181,18 @@
             Board = Board! with { Articles = [result.Article, .. Board.Articles.Where(a => a.Id != result.Article.Id)] };
             var saved = result.AlreadySaved
                 ? $"That link was already on your list. It's in {result.Article.State.Label()}."
-                : "Saved to Read next.";
+                : "Added to Read next.";
             if (result.CoraError is { } coraError)
             {
                 Show($"{saved} {coraError}", isError: true);
             }
+            else if (addToCora && result.Article.Cora is { } cora)
+            {
+                Show($"{saved} {CoraOutcome(cora)}", isError: false, LinkFor(cora));
+            }
             else
             {
-                Show(addToCora && result.Article.Cora is { } cora ? $"{saved} {CoraOutcome(cora)}" : saved, isError: false);
+                Show(saved, isError: false);
             }
             tab = result.Article.State;
             url = "";
@@ -207,7 +229,7 @@
             Board = Board! with { Articles = [.. Board.Articles.Select(a => a.Id == saved.Id ? saved : a)] };
             if (saved.Cora is { } cora)
             {
-                Show(CoraOutcome(cora), isError: false);
+                Show(CoraOutcome(cora), isError: false, LinkFor(cora));
             }
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
@@ -224,8 +246,8 @@
     private static string CoraOutcome(CoraKnowledge cora) => cora switch
     {
         { State: KnowledgeState.InCora } => "CORA already has this page in your knowledge.",
-        { State: KnowledgeState.Queued, ChangesetStatus: "unread" } => "Queued in CORA. Check its text there, then press Analyze.",
-        { State: KnowledgeState.Queued } => "Queued in CORA.",
+        { State: KnowledgeState.Queued, ChangesetStatus: "unread" } => "CORA has the page. Check its text there, then press Analyze.",
+        { State: KnowledgeState.Queued } => "CORA has the page.",
         _ => "CORA couldn't read this page.",
     };
 
@@ -249,9 +271,14 @@
         }
     }
 
-    private void Show(string text, bool isError)
+    // The banner's one link into CORA, when the card's row opens CORA too.
+    private static (string Label, string Href)? LinkFor(CoraKnowledge cora) =>
+        CoraLinks.For(cora) is { } href ? (cora.Action == CoraAction.CheckText ? "Check text" : "View in CORA", href) : null;
+
+    private void Show(string text, bool isError, (string Label, string Href)? link = null)
     {
         message = text;
         messageIsError = isError;
+        messageLink = link;
     }
 }

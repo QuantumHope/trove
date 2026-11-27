@@ -29,4 +29,14 @@ public static class ReadStates
         ReadState.Ignored => "Ignored",
         _ => state.ToString(),
     };
+
+    /// <summary>The card's one-tap move: the next step along the list, or null when it's finished.</summary>
+    public static (ReadState To, string Label)? Forward(this ReadState state) => state switch
+    {
+        ReadState.New => (ReadState.ReadNext, "Read next"),
+        ReadState.ReadNext => (ReadState.Reading, "Start reading"),
+        ReadState.Reading => (ReadState.Done, "Mark done"),
+        ReadState.Ignored => (ReadState.New, "Restore"),
+        _ => null,
+    };
 }

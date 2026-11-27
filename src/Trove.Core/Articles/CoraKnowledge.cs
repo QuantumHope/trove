@@ -19,29 +19,74 @@ public enum KnowledgeState
     Failed,
 }
 
+/// <summary>What the card's CORA row offers: one action, which either asks CORA to read the page or opens it in CORA.</summary>
+public enum CoraAction
+{
+    /// <summary>Nothing to do yet: a feed import is bringing it in.</summary>
+    None,
+
+    /// <summary>Ask CORA to read the page.</summary>
+    Add,
+
+    /// <summary>Ask CORA to read the page again after it failed.</summary>
+    Retry,
+
+    /// <summary>Open the text CORA pulled, where you check it and press Analyze.</summary>
+    CheckText,
+
+    /// <summary>Open the changeset while CORA analyzes it.</summary>
+    ViewProgress,
+
+    /// <summary>Open the changeset whose proposals wait for your review.</summary>
+    Review,
+
+    /// <summary>Open the document in CORA's library.</summary>
+    View,
+}
+
 /// <summary>Whether CORA has read an article, and the changeset in CORA that did.</summary>
 /// <param name="ChangesetStatus">That changeset's own status (unread, pending, drafting, open, applied, failed), which says what's next.</param>
 public sealed record CoraKnowledge(KnowledgeState State, string? ChangesetId = null, string? ChangesetStatus = null)
 {
-    /// <summary>The badge on the card.</summary>
-    public string Label => State switch
+    /// <summary>The badge on the card: where the page is in CORA, in a few words.</summary>
+    public string Label => (State, ChangesetStatus) switch
     {
-        KnowledgeState.InCora => "In CORA",
-        KnowledgeState.Queued => "Queued in CORA",
-        KnowledgeState.Failed => "CORA couldn't read it",
+        (KnowledgeState.InCora, _) => "In CORA",
+        (KnowledgeState.Queued, "unread") => "Needs your check",
+        (KnowledgeState.Queued, "pending" or "drafting") => "CORA is reading",
+        (KnowledgeState.Queued, "open") => "Ready to review",
+        (KnowledgeState.Queued, _) => "On its way to CORA",
+        (KnowledgeState.Failed, _) => "CORA couldn't read it",
         _ => "Not in CORA",
     };
 
-    /// <summary>What's next for a queued article, in a few words; null when the badge says enough.</summary>
-    public string? Next => (State, ChangesetStatus) switch
+    /// <summary>One short line under the badge on what that means for you.</summary>
+    public string Detail => (State, ChangesetStatus) switch
     {
-        (KnowledgeState.Queued, "unread") => "check its text, then Analyze",
-        (KnowledgeState.Queued, "pending" or "drafting") => "CORA is reading it",
-        (KnowledgeState.Queued, "open") => "ready to review",
-        (KnowledgeState.Queued, null) => "a feed import is on its way",
-        _ => null,
+        (KnowledgeState.InCora, _) => "What CORA read is in your knowledge.",
+        (KnowledgeState.Queued, "unread") => "Check the text CORA pulled, then press Analyze.",
+        (KnowledgeState.Queued, "pending" or "drafting") => "CORA is analyzing the page.",
+        (KnowledgeState.Queued, "open") => "CORA's proposals from it are waiting for you.",
+        (KnowledgeState.Queued, _) => "A feed import is bringing it in.",
+        (KnowledgeState.Failed, _) => "The last try didn't work.",
+        _ => "CORA hasn't read this page yet.",
     };
 
-    /// <summary>Whether Add to CORA makes sense: nothing was read, or the last try failed.</summary>
-    public bool CanAdd => State is KnowledgeState.NotInCora or KnowledgeState.Failed;
+    /// <summary>The one action the row offers.</summary>
+    public CoraAction Action => (State, ChangesetStatus, ChangesetId) switch
+    {
+        (KnowledgeState.NotInCora, _, _) => CoraAction.Add,
+        (KnowledgeState.Failed, _, _) => CoraAction.Retry,
+        (_, _, null) => CoraAction.None,
+        (KnowledgeState.InCora, _, _) => CoraAction.View,
+        (KnowledgeState.Queued, "unread", _) => CoraAction.CheckText,
+        (KnowledgeState.Queued, "open", _) => CoraAction.Review,
+        _ => CoraAction.ViewProgress,
+    };
+
+    /// <summary>Whether the action asks CORA to read the page, rather than opening it in CORA.</summary>
+    public bool CanAdd => Action is CoraAction.Add or CoraAction.Retry;
+
+    /// <summary>Whether the row should call attention: something waits on you, or the read failed.</summary>
+    public bool NeedsYou => Action is CoraAction.CheckText or CoraAction.Review or CoraAction.Retry;
 }
