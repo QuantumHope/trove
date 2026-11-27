@@ -7,48 +7,45 @@ from chosen creators, movies and TV, games, board games, and articles from CORA'
 and yearly goals. No social features. It is part of the HopeLab bench (`QuantumHope/HopeLab`), which launches it from
 `hopelab-app.json`.
 
-Today it is a shell: layout, navigation, placeholder screens and the shared themes. No database, sign-in or external
-APIs yet.
+Trove is a client only. Its data model, the YouTube sync and the API are CORA's Trove module (`backend/CORA.Trove` in
+`QuantumHope/CORA`, ADR-126), and CORA serves this app at `/trove/`. Trove has no database, no settings of its own and
+no sign-in: CORA's cookie covers it.
 
 ## Commands
 
 ```bash
 dotnet build Trove.slnx
 dotnet test Trove.slnx
-dotnet run --project src/Trove.Web     # http://localhost:5317
+dotnet publish src/Trove.App -c Release -o artifacts/trove   # set Trove:StaticFilesPath on cora-api to artifacts/trove/wwwroot
 ```
 
 ## Layout
 
-- `src/Trove.Web` is the ASP.NET Core server. It serves the Blazor web app and will host the API. It listens on
-  **localhost only** (`Urls` in `appsettings.json`); `tailscale serve` is the one way in and provides HTTPS, so there is
-  no HTTPS redirect. The PWA pieces (`manifest.webmanifest`, `service-worker.js`, `icon.svg`) are in its `wwwroot`.
-- `src/Trove.Web.Client` is the WebAssembly entry point. The whole app is interactive WebAssembly, prerendered on the
-  server.
+- `src/Trove.App` is the standalone WebAssembly app. `wwwroot/index.html` has `<base href="/trove/">`, and the PWA
+  pieces (`manifest.webmanifest`, `service-worker.js`, `icon.svg`) sit beside it. `CoraApiHandler` puts
+  `Accept: application/json` and `X-Requested-With: XMLHttpRequest` on every call (CORA refuses writes without the
+  second, and only answers 401 instead of redirecting when the first is there), and sends a lapsed sign-in to CORA's
+  `/signin?returnUrl=...`. It turns CORA's 409 (module off) and 502 (module unreachable) into readable messages.
 - `src/Trove.UI` is a Razor class library with every screen, the layout and the theming, so a MAUI Blazor Hybrid shell
-  can reuse it later. Put new screens and components here, not in the two host projects. The one exception is
-  `src/Trove.Web/Components/Pages/Error.razor`: the production error page reads the request, so it stays on the server and
-  opts out of interactive routing.
-- `src/Trove.Core` holds the model and the rules that need no UI or database (watch states, star ratings, the
-  full-game title filter, what a move does to the rating and watched date). Both hosts and the UI reference it.
-- `src/Trove.Web/Data` is EF Core: Postgres (schema `trove`, migrations in `Data/Migrations`) when
-  `ConnectionStrings:Trove` is set, otherwise SQLite with `EnsureCreated`. Add a migration with
-  `dotnet ef migrations add <Name> --project src/Trove.Web --output-dir Data/Migrations`.
-- `src/Trove.Web/YouTube` reads the YouTube Data API (key in user secrets as `YouTube:ApiKey`, sent in the
-  `X-Goog-Api-Key` header so it never lands in a logged URL) and syncs channels incrementally on a timer.
-  `src/Trove.Web/Playthroughs` is the `/api/playthroughs` API the WebAssembly client calls.
-- `tests/Trove.Tests` covers the theme catalog against the shared package, the layout with bUnit, and the server with
-  `WebApplicationFactory`.
+  can reuse it later. Put new screens and components here. `HttpPlaythroughLibrary` calls `api/playthroughs`, which is
+  CORA's `/trove/api/playthroughs`. Links into CORA (such as `CoraLinks.Modules`) are root-relative, since CORA and
+  Trove share an address.
+- `src/Trove.Core` holds the model and the rules that need no UI (watch states, star ratings, the full-game title
+  filter, what a move does to the rating and watched date). CORA's module keeps a copy of the wire types and rules; keep
+  the two in step.
+- `tests/Trove.Tests` covers the theme catalog against the shared package, the layout and the board with bUnit, and the
+  rules.
 
 ## Decisions already made
 
 These were settled with the user on Nov 25-26, 2026 (design page in the HopeLab channel, scope on HopeLab issue 16):
 
-- Its own repo, with its own schema in CORA's Postgres (one role and schema per service, as CORA's ADR-036 does).
+- Its own repo for the app. On Nov 26 the server moved into a CORA module (their words: "moving the server into a CORA
+  module so you administer it from CORA and CORA can search its data but all front ends are in the client app").
 - Blazor PWA now, MAUI Blazor Hybrid later.
 - Trove is the source of truth; services are imports (Goodreads CSV, Audible CSV, Kindle page, ePub folder, Steam,
   YouTube creators plus rules, CORA's reading list). Metadata from Open Library, TMDB, IGDB and the YouTube Data API.
-- Sign-in from the `Tailscale-User-Login` header that `tailscale serve` adds; refuse requests without it.
+- Sign-in is CORA's; the module sees CORA's forwarded subject, so each account has its own board.
 - Status (Wishlist, Up next, In progress, Done, Dropped) is separate from ownership (copies). A book counts once in any
   format.
 

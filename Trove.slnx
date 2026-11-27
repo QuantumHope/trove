@@ -5,8 +5,7 @@
   <Folder Name="/src/">
     <Project Path="src/Trove.Core/Trove.Core.csproj" />
     <Project Path="src/Trove.UI/Trove.UI.csproj" />
-    <Project Path="src/Trove.Web/Trove.Web.csproj" />
-    <Project Path="src/Trove.Web.Client/Trove.Web.Client.csproj" />
+    <Project Path="src/Trove.App/Trove.App.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Trove.Tests/Trove.Tests.csproj" />

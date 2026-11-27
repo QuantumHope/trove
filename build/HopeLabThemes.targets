@@ -1,6 +1,6 @@
 <Project>
   <!-- Finds the restored MattEland.HopeLab.Themes css/ folder through build/HopeLabThemes, restoring that project first
-       when a build starts from a single project (running src/Trove.Web on its own) instead of the solution. -->
+       when a build starts from a single project (building src/Trove.App on its own) instead of the solution. -->
   <PropertyGroup>
     <_HopeLabThemesProject>$(MSBuildThisFileDirectory)HopeLabThemes/HopeLabThemes.csproj</_HopeLabThemesProject>
   </PropertyGroup>

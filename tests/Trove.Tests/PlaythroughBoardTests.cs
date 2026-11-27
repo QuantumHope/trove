@@ -58,8 +58,35 @@ public sealed class PlaythroughBoardTests : BunitContext
         Assert.Equal("https://www.youtube.com/watch?v=a", page.Find("[data-video=a] .trove-video-title").GetAttribute("href"));
     }
 
+    [Fact]
+    public void A_board_that_fails_to_load_says_why_and_tries_again()
+    {
+        library.LoadFailure = "The Trove module is turned off in CORA (Admin → Modules).";
+        var page = Render<Playthroughs>();
+
+        Assert.Contains("turned off in CORA", page.Find("[role=alert]").TextContent, StringComparison.Ordinal);
+
+        library.LoadFailure = null;
+        page.FindAll("button").Single(b => b.TextContent == "Try again").Click();
+
+        Assert.NotNull(page.Find("[data-video=a]"));
+    }
+
+    [Fact]
+    public void Without_a_key_the_board_points_to_cora()
+    {
+        library.HasApiKey = false;
+        var page = Render<Playthroughs>();
+
+        Assert.Equal("/admin/modules", page.FindAll("a").Single(a => a.TextContent == "Open CORA").GetAttribute("href"));
+    }
+
     private sealed class FakeLibrary : IPlaythroughLibrary
     {
+        public string? LoadFailure { get; set; }
+
+        public bool HasApiKey { get; set; } = true;
+
         private readonly Dictionary<string, Playthrough> videos = new()
         {
             ["a"] = new("a", "UNCHARTED 1 DRAKE'S FORTUNE Gameplay Walkthrough FULL GAME", "MKIceAndFire", DateTimeOffset.UtcNow.AddDays(-400),
@@ -69,7 +96,9 @@ public sealed class PlaythroughBoardTests : BunitContext
         public List<(string, MoveRequest)> Moves { get; } = [];
 
         public Task<PlaythroughBoard> GetBoardAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult(new PlaythroughBoard([.. videos.Values], new SyncStatus(true, ["@MKIceAndFire"], DateTimeOffset.UtcNow, null)));
+            LoadFailure is { } failure
+                ? Task.FromException<PlaythroughBoard>(new HttpRequestException(failure))
+                : Task.FromResult(new PlaythroughBoard([.. videos.Values], new SyncStatus(HasApiKey, ["@MKIceAndFire"], DateTimeOffset.UtcNow, null)));
 
         public Task<Playthrough> MoveAsync(string videoId, MoveRequest request, CancellationToken cancellationToken = default)
         {

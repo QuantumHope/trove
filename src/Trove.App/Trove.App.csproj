@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
-  <!-- The WebAssembly side: what runs in the browser (and the installed phone app) once the page is interactive. -->
+  <!-- Trove's app: standalone WebAssembly that CORA serves at /trove. It holds no data; every call goes to CORA's
+       /trove/api, which forwards to the Trove module (see CORA's ADR-126). -->
   <PropertyGroup>
-    <NoDefaultLaunchSettingsFile>true</NoDefaultLaunchSettingsFile>
-    <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
   <ItemGroup>

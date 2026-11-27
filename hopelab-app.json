@@ -1,7 +1,7 @@
 {
-  "$comment": "Read by the HopeLab Bench for its launch buttons. Trove is a web app, so it has no desktop or release section yet.",
+  "$comment": "Read by the HopeLab Bench for its launch buttons. Trove runs inside CORA (served at /trove/), so it has a publish task rather than a server to start.",
   "launch": [
-    { "name": "Web app", "command": ["dotnet", "run", "--project", "src/Trove.Web"], "default": true, "exclusive": true, "ports": [5317] },
+    { "name": "Publish for CORA", "command": ["dotnet", "publish", "src/Trove.App", "-c", "Release", "-o", "artifacts/trove"], "kind": "task", "default": true },
     { "name": "Tests", "command": ["dotnet", "test", "Trove.slnx"], "kind": "task" }
   ]
 }

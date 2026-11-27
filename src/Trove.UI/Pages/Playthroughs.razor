@@ -7,7 +7,17 @@
 @if (Board is null)
 {
     <h1>Full playthroughs</h1>
-    <p class="trove-empty">Loading…</p>
+    @if (loadError is not null)
+    {
+        <div class="trove-banner is-error" role="alert">
+            <span>The board didn't load. @loadError</span>
+            <button type="button" class="trove-button" @onclick="LoadAsync">Try again</button>
+        </div>
+    }
+    else
+    {
+        <p class="trove-empty">Loading…</p>
+    }
     return;
 }
 
@@ -35,15 +45,15 @@
 @if (!Board.Sync.HasApiKey)
 {
     <div class="trove-banner">
-        <span>Add a YouTube API key to load videos.</span>
-        <a class="trove-button is-primary" href="settings">Add key</a>
+        <span>CORA needs a YouTube API key before videos can load. Add it in CORA under Admin → Modules → Trove.</span>
+        <a class="trove-button is-primary" href="@CoraLinks.Modules">Open CORA</a>
     </div>
 }
 else if (Board.Sync.LastError is { } error)
 {
     <div class="trove-banner is-error" role="alert">
         <span>The last sync didn't finish. @error</span>
-        <a class="trove-button" href="settings">Check key</a>
+        <a class="trove-button" href="@CoraLinks.Modules">Check key in CORA</a>
     </div>
 }
 
@@ -87,11 +97,12 @@ else if (Board.Sync.LastError is { } error)
     private bool syncing;
     private bool showIgnored;
     private string? message;
+    private string? loadError;
     private WatchState tab = WatchState.New;
     private Playthrough? rating;
     private DateTimeOffset now;
 
-    [PersistentState] public PlaythroughBoard? Board { get; set; }
+    private PlaythroughBoard? Board;
 
     private IEnumerable<WatchState> VisibleColumns =>
         showIgnored || tab == WatchState.Ignored ? WatchStates.All : WatchStates.Columns;
@@ -101,7 +112,20 @@ else if (Board.Sync.LastError is { } error)
     protected override async Task OnInitializedAsync()
     {
         now = Time.GetUtcNow();
-        Board ??= await Library.GetBoardAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loadError = null;
+        try
+        {
+            Board = await Library.GetBoardAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            loadError = ex.Message;
+        }
     }
 
     private int Count(WatchState state) => Board?.Videos.Count(v => v.State == state) ?? 0;
