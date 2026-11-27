@@ -1,18 +1,17 @@
 @using Trove.Core.Setup
 @inject ITroveSetup Setup
 
-@* On start, asks once for what Trove itself can set: CORA's address. Anything else missing (the YouTube key, channels)
-   is an admin's job in CORA and is shown on the board that needs it, not here. A failed check shows nothing: the
-   board under it says what's wrong. "Later" lasts until the app is opened again. *@
+@* On start, asks CORA's admin once for what Trove itself can set: CORA's address. Nobody else is asked, since only the
+   admin can save it; Settings tells them who can. Anything else missing (the YouTube key, channels) is an admin's job
+   in CORA and is shown on the board that needs it, not here. A failed check shows nothing: the board under it says
+   what's wrong. "Later" lasts until the app is opened again. The status line is always there, empty until a save, so
+   a screen reader announces the change. *@
 
 @if (asking)
 {
     <CoraAddressDialog OnSaved="Saved" OnLater="Later" />
 }
-else if (saved)
-{
-    <div class="trove-toast" role="status">Saved. Trove can reach CORA now.</div>
-}
+<div class="trove-toast" role="status">@(saved ? "Saved. Trove can reach CORA now." : null)</div>
 
 @code {
     private bool asking;
@@ -22,9 +21,9 @@ else if (saved)
     {
         try
         {
-            asking = !(await Setup.GetAsync()).CoraAddressSet;
+            asking = await Setup.GetAsync() is { CoraAddressSet: false, CanSetCoraAddress: true };
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (HttpTroveSetup.IsServerFailure(ex))
         {
             asking = false;
         }

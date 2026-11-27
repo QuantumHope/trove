@@ -1,4 +1,5 @@
 @page "/settings"
+@implements IDisposable
 @inject ITroveSetup Setup
 
 <PageTitle>Settings · Trove</PageTitle>
@@ -16,7 +17,7 @@
         <ul class="trove-setup-list" aria-label="What Trove has">
             <li class="@(s.CoraAddressSet ? "is-set" : "is-missing")">
                 <span class="trove-setup-mark" aria-hidden="true">@(s.CoraAddressSet ? "✓" : "!")</span>
-                <span>@(s.CoraAddressSet ? "Trove knows CORA's address." : "CORA's address isn't set, so the reading list gets no feed posts.")</span>
+                <span>@AddressText(s)</span>
             </li>
             <li class="@(s.YouTubeKeySet ? "is-set" : "is-missing")">
                 <span class="trove-setup-mark" aria-hidden="true">@(s.YouTubeKeySet ? "✓" : "!")</span>
@@ -33,8 +34,11 @@
         <p class="trove-settings-text" role="alert">@error</p>
     }
     <div class="trove-setup-actions">
-        <a class="trove-button" href="@CoraLinks.Modules">Open Trove's settings in CORA</a>
-        @if (status is { CoraAddressSet: false })
+        @if (status is { CanSetCoraAddress: true })
+        {
+            <a class="trove-button" href="@CoraLinks.Modules">Open Trove's settings in CORA</a>
+        }
+        @if (status is { CoraAddressSet: false, CanSetCoraAddress: true })
         {
             <button type="button" class="trove-button is-accent" @onclick="() => askingAddress = true">Set CORA's address</button>
         }
@@ -59,7 +63,11 @@
     private string? error;
     private bool askingAddress;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    protected override Task OnInitializedAsync()
+    {
+        Setup.Changed += OnSetupChanged;
+        return LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -68,17 +76,30 @@
             status = await Setup.GetAsync();
             error = null;
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (HttpTroveSetup.IsServerFailure(ex))
         {
-            error = ex.Message;
+            status = null;
+            error = HttpTroveSetup.Describe(ex);
         }
     }
 
-    private async Task AddressSaved()
+    // A save from the start-up prompt, or from this page's own dialog: read the setup again.
+    private void OnSetupChanged() => _ = InvokeAsync(async () =>
     {
-        askingAddress = false;
         await LoadAsync();
-    }
+        StateHasChanged();
+    });
+
+    private void AddressSaved() => askingAddress = false;
+
+    private static string AddressText(SetupStatus s) => (s.CoraAddressSet, s.CanSetCoraAddress) switch
+    {
+        (true, _) => "Trove knows CORA's address.",
+        (false, true) => "CORA's address isn't set, so the reading list gets no feed posts.",
+        (false, false) => "CORA's address isn't set, so the reading list gets no feed posts. CORA's admin can set it.",
+    };
+
+    public void Dispose() => Setup.Changed -= OnSetupChanged;
 
     private static string ChannelText(int channels) => channels switch
     {

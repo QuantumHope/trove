@@ -631,4 +631,5 @@ h1:focus { outline: none; }
 .trove-setup-list li.is-set .trove-setup-mark { color: var(--accent-green); }
 .trove-setup-list li.is-missing .trove-setup-mark { color: var(--accent-error); }
 .trove-setup-actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
+.trove-toast:empty { padding: 0; border: 0; }
 @media (max-width: 767px) { .trove-toast { bottom: calc(72px + env(safe-area-inset-bottom)); } }

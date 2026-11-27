@@ -11,7 +11,8 @@ Trove is a client only. Its data model, the YouTube sync and the API are CORA's 
 `QuantumHope/CORA`, ADR-126), and CORA serves this app at `/trove/`. Trove has no database and no sign-in: CORA's
 cookie covers it. Its settings (CORA's address, the YouTube key, the channel list) belong to the module and are changed
 in CORA's Admin → Modules (ADR-131). The one Trove itself can set is CORA's address: `SetupPrompt` asks for it at start
-when `api/setup` says it's missing, and Settings shows what is set.
+when `api/setup` says it's missing and the caller can set it (`CanSetCoraAddress`, CORA's admin), and Settings shows
+what is set and reads it again after a save (`ITroveSetup.Changed`).
 
 ## Commands
 

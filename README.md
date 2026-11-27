@@ -10,8 +10,8 @@ Part of the [HopeLab](https://github.com/QuantumHope/HopeLab) bench.
 Trove is only the app. Its data, the YouTube sync and the API live in CORA's Trove module (CORA ADR-126), and CORA
 serves this app at `/trove/`. So Trove works on any device that can reach CORA, signs in with CORA's sign-in, and
 needs no database of its own. Its settings (CORA's address, the YouTube key and the channel list) are kept by the module
-and changed in CORA under **Admin → Modules → Trove**. If the module doesn't know CORA's address yet, Trove asks for it
-when it starts, filled in with the site's own address. CORA's assistant can search the board too.
+and changed in CORA under **Admin → Modules → Trove**. If the module doesn't know CORA's address yet, Trove asks CORA's
+admin for it when it starts, filled in with the site's own address. CORA's assistant can search the board too.
 
 ## Status
 

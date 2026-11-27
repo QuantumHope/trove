@@ -67,9 +67,9 @@
         {
             error = ex.Message;
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex) when (HttpTroveSetup.IsServerFailure(ex))
         {
-            error = ex.Message;
+            error = HttpTroveSetup.Describe(ex);
         }
         finally
         {

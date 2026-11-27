@@ -12,4 +12,7 @@ public interface ITroveSetup
     /// <see cref="UnauthorizedAccessException"/> when the person signed in isn't CORA's admin.
     /// </summary>
     Task<SaveCoraAddressResult> SaveCoraAddressAsync(string baseUrl, CancellationToken cancellationToken = default);
+
+    /// <summary>Raised after a save, so a page showing the setup can read it again.</summary>
+    event Action? Changed;
 }
