@@ -49,7 +49,9 @@
             yield return Article.SourceName;
         }
 
-        if (!string.IsNullOrWhiteSpace(Article.Author))
+        // A personal blog's feed is usually named for its author; say the name once.
+        if (!string.IsNullOrWhiteSpace(Article.Author)
+            && !(Article.Source == ArticleSource.Feed && string.Equals(Article.Author, Article.SourceName, StringComparison.OrdinalIgnoreCase)))
         {
             yield return Article.Author;
         }

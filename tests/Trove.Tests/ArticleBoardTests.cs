@@ -132,6 +132,16 @@ public sealed class ArticleBoardTests : BunitContext
         Assert.Contains(page.FindAll("a"), a => a.GetAttribute("href") == "/admin/feeds" && a.TextContent.Contains("Manage feeds", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void A_feed_named_for_its_author_names_them_once()
+    {
+        library.Extra = Saved("blog", "https://jvns.ca/blog/dns", "DNS", ReadState.New, ArticleSource.Feed, "Julia Evans") with { Author = "Julia Evans" };
+        var page = Render<Articles>();
+
+        var meta = page.Find("[data-article=blog]").TextContent;
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(meta, "Julia Evans"));
+    }
+
     private static Article Saved(string id, string url, string title, ReadState state, ArticleSource source = ArticleSource.Link, string? sourceName = null) =>
         new(id, url, title, new Uri(url).Host, null, null, null, source, sourceName, Added, state, null);
 
@@ -147,6 +157,8 @@ public sealed class ArticleBoardTests : BunitContext
 
         public FeedSyncStatus? Feeds { get; set; }
 
+        public Article? Extra { get; set; }
+
         public string? AddFailure { get; set; }
 
         public List<AddArticleRequest> Adds { get; } = [];
@@ -158,7 +170,7 @@ public sealed class ArticleBoardTests : BunitContext
         public Task<ArticleBoard> GetBoardAsync(CancellationToken cancellationToken = default) =>
             LoadFailure is { } failure
                 ? Task.FromException<ArticleBoard>(new HttpRequestException(failure))
-                : Task.FromResult(new ArticleBoard([.. articles], Feeds));
+                : Task.FromResult(new ArticleBoard([.. articles, .. Extra is null ? Array.Empty<Article>() : [Extra]], Feeds));
 
         public Task<AddArticleResult> AddAsync(AddArticleRequest request, CancellationToken cancellationToken = default)
         {
