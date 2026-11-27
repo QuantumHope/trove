@@ -9,13 +9,15 @@ Part of the [HopeLab](https://github.com/QuantumHope/HopeLab) bench.
 
 Trove is only the app. Its data, the YouTube sync and the API live in CORA's Trove module (CORA ADR-126), and CORA
 serves this app at `/trove/`. So Trove works on any device that can reach CORA, signs in with CORA's sign-in, and
-needs no settings or database of its own. CORA's assistant can search the board too.
+needs no database of its own. Its settings (CORA's address, the YouTube key and the channel list) are kept by the module
+and changed in CORA under **Admin → Modules → Trove**. If the module doesn't know CORA's address yet, Trove asks CORA's
+admin for it when it starts, filled in with the site's own address. CORA's assistant can search the board too.
 
 ## Status
 
 The layout, navigation and the 24 shared HopeLab themes, plus the first feature: **full playthroughs**
-(Library → Full playthroughs, `/trove/library/youtube`). CORA reads the YouTube channels set in its Trove module, keeps
-only full-game videos (not "Part 3" uploads), and Trove shows them on a board: New, Watch next, In progress, Done and
+(Library → Full playthroughs, `/trove/library/youtube`). CORA reads the YouTube channels on its Trove module's list,
+keeps the videos each channel's rule allows (full games only, not "Part 3" uploads, or any video of 20 minutes or more), and Trove shows them on a board: New, Watch next, In progress, Done and
 Ignored. Videos in progress or done take a 0.25 to 5 star rating; moving one to Done asks for the rating and records
 the date. Each CORA account has its own board.
 
@@ -31,6 +33,7 @@ server and is never committed.
 4. In CORA, open **Admin → Modules**, enable Trove and paste the key into its YouTube card. CORA tries it against
    YouTube before saving it and starts loading the channels. Or set `YouTube:ApiKey` in the `CORA.Trove` project's user
    secrets; a key saved in Admin takes its place.
+5. Add channels in the same card by @handle, channel link or a link to one of their videos.
 
 ## Build it
 
