@@ -8,11 +8,9 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="bunit" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Trove.UI\Trove.UI.csproj" />
-    <ProjectReference Include="..\..\src\Trove.Web\Trove.Web.csproj" />
   </ItemGroup>
   <Import Project="..\..\build\HopeLabThemes.targets" />
 

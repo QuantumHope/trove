@@ -1,0 +1,84 @@
+@* One video: the thumbnail with its length, the game leading the title, then the capture details, views and age.
+   The thumbnail and title open the video on YouTube in a new tab. *@
+
+<article class="trove-video" data-video="@Video.VideoId">
+    <a class="trove-video-thumb" href="@Video.WatchUrl" target="_blank" rel="noopener noreferrer" tabindex="-1" aria-hidden="true">
+        <img src="@Video.ThumbnailUrl" alt="" loading="lazy" />
+        <span class="trove-video-length">@VideoFormat.Length(Video.Duration)</span>
+    </a>
+    <div class="trove-video-body">
+        <a class="trove-video-title" href="@Video.WatchUrl" target="_blank" rel="noopener noreferrer" title="@Video.Title">@title.Game</a>
+        <p class="trove-video-meta">
+            @if (title.Details is { } details)
+            {
+                <span class="trove-video-tag">@details</span>
+            }
+            <span>@string.Join(" · ", Meta())</span>
+        </p>
+
+        @if (Video.State.CanRate())
+        {
+            <StarRatingInput Value="Video.Rating" ValueChanged="rating => OnRate.InvokeAsync((Video, rating))" Label="@($"Your rating for {title.Game}")" />
+        }
+
+        <div class="trove-video-footer">
+            <span class="trove-video-watched">
+                @if (Video.State == WatchState.Done && Video.WatchedOn is { } watched)
+                {
+                    @($"Watched {VideoFormat.Day(watched)}")
+                }
+            </span>
+            <select @key="selectVersion" class="trove-state-select" value="@Video.State" @onchange="OnMoveSelected" aria-label="@($"Move {title.Game} to")">
+                @foreach (var state in WatchStates.All)
+                {
+                    <option value="@state">@state.Label()</option>
+                }
+            </select>
+        </div>
+    </div>
+</article>
+
+@code {
+    private (string Game, string? Details) title;
+
+    // Blazor leaves a select showing what was picked when the bound value didn't change (a cancelled rating prompt or a
+    // move that failed to save), so each pick rebuilds the select from the video's real state.
+    private int selectVersion;
+
+    [Parameter, EditorRequired] public Playthrough Video { get; set; } = default!;
+
+    [Parameter] public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Show the channel's name, for when the board follows more than one channel.</summary>
+    [Parameter] public bool ShowChannel { get; set; }
+
+    [Parameter] public EventCallback<(Playthrough Video, WatchState State)> OnMove { get; set; }
+
+    [Parameter] public EventCallback<(Playthrough Video, decimal? Rating)> OnRate { get; set; }
+
+    protected override void OnParametersSet() => title = VideoTitle.Split(Video.Title);
+
+    private IEnumerable<string> Meta()
+    {
+        if (ShowChannel)
+        {
+            yield return Video.ChannelTitle;
+        }
+
+        if (Video.ViewCount is not null)
+        {
+            yield return VideoFormat.Views(Video.ViewCount);
+        }
+
+        yield return VideoFormat.Ago(Video.PublishedAt, Now);
+    }
+
+    private async Task OnMoveSelected(ChangeEventArgs e)
+    {
+        selectVersion++;
+        if (Enum.TryParse<WatchState>(e.Value?.ToString(), out var state) && state != Video.State)
+        {
+            await OnMove.InvokeAsync((Video, state));
+        }
+    }
+}

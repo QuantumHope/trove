@@ -1,0 +1,130 @@
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+@* The themes as one radio group, the way every HopeLab app lists them: System, then the light themes, then the dark
+   ones. One Tab stop on the chosen entry; the arrow keys, Home and End move the choice through every entry. *@
+<div class="theme-list" role="radiogroup" aria-label="Theme" @ref="group">
+    @Option(ThemePreference.System, "System", "Follows your device, Light or Dark")
+    <div class="theme-list__heading" role="presentation">LIGHT THEMES</div>
+    @foreach (var theme in ThemeCatalog.All.Where(t => t.IsLight))
+    {
+        @Option(theme.Id, theme.Name, theme.Description)
+    }
+    <div class="theme-list__heading" role="presentation">DARK THEMES</div>
+    @foreach (var theme in ThemeCatalog.All.Where(t => !t.IsLight))
+    {
+        @Option(theme.Id, theme.Name, theme.Description)
+    }
+</div>
+
+@code {
+    private ElementReference group;
+    private DotNetObjectReference<ThemeList>? self;
+    private string preference = ThemePreference.System;
+    private bool focusAfterRender;
+
+    /// <summary>Whether to put focus on the chosen entry once the list is shown, as a menu does.</summary>
+    [Parameter] public bool FocusOnOpen { get; set; }
+
+    /// <summary>A click or Enter on an entry: the choice is made, so a menu around the list can close.</summary>
+    [Parameter] public EventCallback<string> OnPicked { get; set; }
+
+    /// <summary>Any change of choice, by click or by arrow key.</summary>
+    [Parameter] public EventCallback<string> OnChanged { get; set; }
+
+    /// <summary>Escape inside the list.</summary>
+    [Parameter] public EventCallback OnEscape { get; set; }
+
+    private RenderFragment Option(string value, string name, string description) => __builder =>
+    {
+        var on = value == preference;
+        <button type="button" role="radio" class="theme-list__option @(on ? "theme-list__option--on" : null)"
+                aria-checked="@(on ? "true" : "false")" tabindex="@(on ? 0 : -1)" data-preference="@value"
+                @onclick="() => PickAsync(value)">
+            @if (value == ThemePreference.System)
+            {
+                <span class="theme-list__system" aria-hidden="true">
+                    <ThemeThumbnail Theme="light" />
+                    <ThemeThumbnail Theme="dark" Class="theme-list__system-dark" />
+                </span>
+            }
+            else
+            {
+                <ThemeThumbnail Theme="@value" />
+            }
+            <span class="theme-list__text">
+                <span class="theme-list__name">@name</span>
+                <span class="theme-list__description">@description</span>
+            </span>
+            @if (on)
+            {
+                <svg class="theme-list__check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 L6.5 12 L13 4.5" /></svg>
+            }
+        </button>
+    };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            preference = ThemePreference.Read(await Js.InvokeAsync<string?>("trove.theme.get"));
+            self = DotNetObjectReference.Create(this);
+            await Js.InvokeVoidAsync("trove.theme.bindList", group, self);
+            focusAfterRender = FocusOnOpen;
+            StateHasChanged();
+            return;
+        }
+
+        if (focusAfterRender)
+        {
+            focusAfterRender = false;
+            await Js.InvokeVoidAsync("trove.theme.focusChecked", group);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnKey(string key)
+    {
+        if (key == "Escape")
+        {
+            await OnEscape.InvokeAsync();
+            return;
+        }
+
+        if (ThemePreference.ForKey(preference, key) is { } next)
+        {
+            await ChooseAsync(next);
+            focusAfterRender = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PickAsync(string value)
+    {
+        await ChooseAsync(value);
+        await OnPicked.InvokeAsync(value);
+    }
+
+    private async Task ChooseAsync(string value)
+    {
+        preference = value;
+        await Js.InvokeVoidAsync("trove.theme.set", value);
+        await OnChanged.InvokeAsync(value);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("trove.theme.unbindList", group);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+            // Prerendering: there was never a page to unbind from.
+        }
+        self?.Dispose();
+    }
+}

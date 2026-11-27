@@ -1,0 +1,90 @@
+@* Five stars in quarter-star steps. Click or tap where on the stars you mean (the left quarter of the third star is
+   2.25); with the keyboard, the arrow keys move a quarter star, Home clears and End gives five. *@
+
+<div class="trove-stars @(ReadOnly ? "is-readonly" : "")"
+     role="@(ReadOnly ? "img" : "slider")"
+     tabindex="@(ReadOnly ? null : "0")"
+     aria-label="@Label"
+     aria-valuemin="@(ReadOnly ? null : "0")"
+     aria-valuemax="@(ReadOnly ? null : "5")"
+     aria-valuenow="@(ReadOnly ? null : (Value ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture))"
+     aria-valuetext="@StarRating.Describe(Value)"
+     @onclick="OnClick"
+     @onmousemove="OnHover"
+     @onmouseleave="() => hover = null"
+     @onkeydown="OnKey">
+    @for (var i = 0; i < 5; i++)
+    {
+        var fill = StarRating.Fill(hover ?? Value, i);
+        var clipId = $"{id}-{i}";
+        <svg class="trove-star" viewBox="0 0 24 24" width="@StarSize" height="@StarSize" aria-hidden="true">
+            <defs>
+                <clipPath id="@clipId"><rect x="0" y="0" width="@(24 * fill)" height="24" /></clipPath>
+            </defs>
+            <path class="trove-star-empty" d="@StarPath" />
+            <path class="trove-star-full" d="@StarPath" clip-path="url(#@clipId)" />
+        </svg>
+    }
+    <span class="trove-stars-value">@(Value is { } v ? VideoFormat.Stars(v) : ReadOnly ? "" : "Rate")</span>
+</div>
+
+@code {
+    public const int StarSize = 24;
+    private const string StarPath = "M12 2.5l2.94 6.1 6.71.86-4.93 4.62 1.26 6.65L12 17.5l-5.98 3.23 1.26-6.65L2.35 9.46l6.71-.86z";
+
+    private readonly string id = $"stars-{Guid.NewGuid():N}";
+    private decimal? hover;
+
+    [Parameter] public decimal? Value { get; set; }
+
+    [Parameter] public EventCallback<decimal?> ValueChanged { get; set; }
+
+    [Parameter] public bool ReadOnly { get; set; }
+
+    [Parameter] public string Label { get; set; } = "Rating";
+
+    /// <summary>The rating a click at <paramref name="offsetX"/> pixels from the left gives: the quarter star it lands in.</summary>
+    internal static decimal FromOffset(double offsetX)
+    {
+        var quarters = (int)Math.Ceiling(offsetX / StarSize * 4);
+        return Math.Clamp(quarters, 1, 20) * StarRating.Step;
+    }
+
+    private async Task OnClick(MouseEventArgs e)
+    {
+        if (!ReadOnly && e.OffsetX <= StarSize * 5)
+        {
+            await SetAsync(FromOffset(e.OffsetX));
+        }
+    }
+
+    private void OnHover(MouseEventArgs e) =>
+        hover = ReadOnly || e.OffsetX > StarSize * 5 ? null : FromOffset(e.OffsetX);
+
+    private async Task OnKey(KeyboardEventArgs e)
+    {
+        if (ReadOnly)
+        {
+            return;
+        }
+
+        decimal? next = e.Key switch
+        {
+            "ArrowRight" or "ArrowUp" => Math.Min((Value ?? 0) + StarRating.Step, StarRating.Max),
+            "ArrowLeft" or "ArrowDown" => Value is null or <= StarRating.Step ? null : Value - StarRating.Step,
+            "Home" => null,
+            "End" => StarRating.Max,
+            _ => Value,
+        };
+        if (next != Value)
+        {
+            await SetAsync(next);
+        }
+    }
+
+    private async Task SetAsync(decimal? rating)
+    {
+        Value = rating;
+        await ValueChanged.InvokeAsync(rating);
+    }
+}

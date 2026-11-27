@@ -1,9 +1,9 @@
 namespace Trove.UI.Layout;
 
-/// <summary>One of Trove's main areas, as the side rail (and the bottom bar on a phone) lists it.</summary>
+/// <summary>One of Trove's main areas, as the header's tab strip (and the bottom bar on a phone) lists it.</summary>
 /// <param name="Title">The area's name.</param>
 /// <param name="Href">Its address, relative to the app's base.</param>
-/// <param name="Glyph">A one-character mark for the rail.</param>
+/// <param name="Glyph">A one-character mark for the tab.</param>
 /// <param name="Summary">One line on what the area is for.</param>
 public sealed record NavArea(string Title, string Href, string Glyph, string Summary)
 {

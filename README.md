@@ -5,18 +5,43 @@ the middle of, what I've finished, and how the year's goals are going. Private, 
 
 Part of the [HopeLab](https://github.com/QuantumHope/HopeLab) bench.
 
+## How it fits with CORA
+
+Trove is only the app. Its data, the YouTube sync and the API live in CORA's Trove module (CORA ADR-126), and CORA
+serves this app at `/trove/`. So Trove works on any device that can reach CORA, signs in with CORA's sign-in, and
+needs no settings or database of its own. CORA's assistant can search the board too.
+
 ## Status
 
-A shell: the layout, navigation (Home, Library, Goals, Sources, Settings), placeholder screens and the 24 shared
-HopeLab themes. Nothing is stored yet.
+The layout, navigation and the 24 shared HopeLab themes, plus the first feature: **full playthroughs**
+(Library → Full playthroughs, `/trove/library/youtube`). CORA reads the YouTube channels set in its Trove module, keeps
+only full-game videos (not "Part 3" uploads), and Trove shows them on a board: New, Watch next, In progress, Done and
+Ignored. Videos in progress or done take a 0.25 to 5 star rating; moving one to Done asks for the rating and records
+the date. Each CORA account has its own board.
 
-## Run it
+## YouTube API key
+
+CORA's Trove module reads channels with the YouTube Data API v3, which needs a free API key. It stays on the CORA
+server and is never committed.
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create a project (or pick one).
+2. Under **APIs & Services → Library**, enable **YouTube Data API v3**.
+3. Under **APIs & Services → Credentials**, choose **Create credentials → API key**. Restrict it to the YouTube Data
+   API v3.
+4. In CORA, open **Admin → Modules**, enable Trove and paste the key into its YouTube card. CORA tries it against
+   YouTube before saving it and starts loading the channels. Or set `YouTube:ApiKey` in the `CORA.Trove` project's user
+   secrets; a key saved in Admin takes its place.
+
+## Build it
 
 ```bash
-dotnet run --project src/Trove.Web   # http://localhost:5317
+dotnet build Trove.slnx
 dotnet test Trove.slnx
+dotnet publish src/Trove.App -c Release -o artifacts/trove
 ```
 
-Needs the .NET 10 SDK. See `CLAUDE.md` for the layout and the decisions behind it.
+Point CORA at the published app by setting `Trove:StaticFilesPath` on `cora-api` to `artifacts/trove/wwwroot` (the
+full path), then open `/trove/` on CORA. Needs the .NET 10 SDK. See `CLAUDE.md` for the layout and the decisions
+behind it.
 
 ![Home](docs/screenshots/home.png)

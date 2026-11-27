@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- CORA serves Trove at /trove/. -->
+    <base href="/trove/" />
+    <title>Trove</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <meta name="theme-color" content="#14102A" />
+    <!-- The saved theme goes on <html> before anything paints. -->
+    <script src="_content/Trove.UI/theme.js"></script>
+    <link rel="stylesheet" href="_content/Trove.UI/themes/index.css" />
+    <link rel="stylesheet" href="_content/Trove.UI/trove.css" />
+</head>
+
+<body>
+    <div id="app"><p class="trove-empty" style="padding: 2rem">Loading Trove…</p></div>
+    <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("service-worker.js", { scope: "./" });
+        }
+    </script>
+</body>
+
+</html>

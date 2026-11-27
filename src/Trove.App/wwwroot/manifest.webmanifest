@@ -2,7 +2,7 @@
   "name": "Trove",
   "short_name": "Trove",
   "description": "What you want to read, watch, play and listen to, and how the year's goals are going.",
-  "id": "/",
+  "id": "/trove/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,0 +1,33 @@
+@* Asked when a video moves to Done. Skipping still marks it done, just unrated. *@
+
+<div class="trove-dialog-backdrop" @onclick="Cancel">
+    <div class="trove-dialog trove-card" role="dialog" aria-modal="true" aria-labelledby="trove-rate-title" @onclick:stopPropagation="true" @onkeydown="OnKey">
+        <div>
+            <h2 id="trove-rate-title">Rate it</h2>
+            <p class="trove-dialog-video">@VideoTitle.Split(Video.Title).Game</p>
+        </div>
+        <StarRatingInput @bind-Value="rating" Label="Your rating" />
+        <div class="trove-dialog-actions">
+            <button type="button" class="trove-button is-quiet" @onclick="Cancel">Cancel</button>
+            <button type="button" class="trove-button" @onclick="() => OnDone.InvokeAsync(null)">Skip</button>
+            <button type="button" class="trove-button is-primary" disabled="@(rating is null)" @onclick="() => OnDone.InvokeAsync(rating)">Save</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private decimal? rating;
+
+    [Parameter, EditorRequired] public Playthrough Video { get; set; } = default!;
+
+    /// <summary>Marks it done, with the rating given (or none when skipped).</summary>
+    [Parameter] public EventCallback<decimal?> OnDone { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override void OnInitialized() => rating = Video.Rating;
+
+    private Task Cancel() => OnCancel.InvokeAsync();
+
+    private Task OnKey(KeyboardEventArgs e) => e.Key == "Escape" ? Cancel() : Task.CompletedTask;
+}

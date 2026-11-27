@@ -1,0 +1,202 @@
+@page "/library/youtube"
+@inject IPlaythroughLibrary Library
+@inject TimeProvider Time
+
+<PageTitle>Full playthroughs · Trove</PageTitle>
+
+@if (Board is null)
+{
+    <h1>Full playthroughs</h1>
+    @if (loadError is not null)
+    {
+        <div class="trove-banner is-error" role="alert">
+            <span>The board didn't load. @loadError</span>
+            <button type="button" class="trove-button" @onclick="LoadAsync">Try again</button>
+        </div>
+    }
+    else
+    {
+        <p class="trove-empty">Loading…</p>
+    }
+    return;
+}
+
+<header class="trove-page-header">
+    <div class="trove-page-heading">
+        <h1>Full playthroughs</h1>
+        <p class="trove-lead">
+            Complete games from
+            @for (var i = 0; i < Board.Sync.Channels.Count; i++)
+            {
+                var handle = Board.Sync.Channels[i];
+                @(i > 0 ? ", " : "")<a href="@YouTubeLinks.Channel(handle)" target="_blank" rel="noopener noreferrer">@handle</a>
+            }
+        </p>
+    </div>
+    <div class="trove-toolbar">
+        <span class="trove-sync-when">@SyncLine</span>
+        <button type="button" class="trove-button" disabled="@(syncing || !Board.Sync.HasApiKey)" @onclick="SyncAsync">@(syncing ? "Syncing…" : "Sync now")</button>
+        <button type="button" class="trove-button is-quiet trove-show-ignored" aria-pressed="@(showIgnored ? "true" : "false")" @onclick="() => showIgnored = !showIgnored">
+            Ignored <span class="trove-count">@Count(WatchState.Ignored)</span>
+        </button>
+    </div>
+</header>
+
+@if (!Board.Sync.HasApiKey)
+{
+    <div class="trove-banner">
+        <span>CORA needs a YouTube API key before videos can load. Add it in CORA under Admin → Modules → Trove.</span>
+        <a class="trove-button is-primary" href="@CoraLinks.Modules">Open CORA</a>
+    </div>
+}
+else if (Board.Sync.LastError is { } error)
+{
+    <div class="trove-banner is-error" role="alert">
+        <span>The last sync didn't finish. @error</span>
+        <a class="trove-button" href="@CoraLinks.Modules">Check key in CORA</a>
+    </div>
+}
+
+@if (message is not null)
+{
+    <div class="trove-banner is-error" role="alert"><span>@message</span></div>
+}
+
+<div class="trove-tabs" role="tablist" aria-label="Columns">
+    @foreach (var state in WatchStates.All)
+    {
+        <button type="button" role="tab" class="trove-tab @(state == tab ? "is-active" : "")" aria-selected="@(state == tab ? "true" : "false")" @onclick="() => tab = state">
+            @state.Label() <span class="trove-count">@Count(state)</span>
+        </button>
+    }
+</div>
+
+<section class="trove-video-board">
+    @foreach (var state in VisibleColumns)
+    {
+        <div class="trove-video-column @(state == tab ? "is-current" : "")" aria-label="@state.Label()">
+            <h2 class="trove-column-head">@state.Label() <span class="trove-count-pill">@Count(state)</span></h2>
+            @foreach (var video in Board.Videos.Where(v => v.State == state).OrderBy(v => Order(v)))
+            {
+                <PlaythroughCard @key="video.VideoId" Video="video" Now="now" ShowChannel="@(Board.Sync.Channels.Count > 1)" OnMove="MoveAsync" OnRate="RateAsync" />
+            }
+            @if (Count(state) == 0)
+            {
+                <p class="trove-empty">@Empty(state)</p>
+            }
+        </div>
+    }
+</section>
+
+@if (rating is { } pending)
+{
+    <RatingDialog Video="pending" OnDone="r => FinishDoneAsync(pending, r)" OnCancel="() => rating = null" />
+}
+
+@code {
+    private bool syncing;
+    private bool showIgnored;
+    private string? message;
+    private string? loadError;
+    private WatchState tab = WatchState.New;
+    private Playthrough? rating;
+    private DateTimeOffset now;
+
+    private PlaythroughBoard? Board;
+
+    private IEnumerable<WatchState> VisibleColumns =>
+        showIgnored || tab == WatchState.Ignored ? WatchStates.All : WatchStates.Columns;
+
+    private string SyncLine => Board?.Sync.LastSyncedAt is { } at ? $"Synced {VideoFormat.Ago(at, now)}" : "Not synced yet";
+
+    protected override async Task OnInitializedAsync()
+    {
+        now = Time.GetUtcNow();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loadError = null;
+        try
+        {
+            Board = await Library.GetBoardAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            loadError = ex.Message;
+        }
+    }
+
+    // The browser's own date, so a watch late in the evening is recorded on the person's day, not the server's.
+    private DateOnly Today => DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+
+    private int Count(WatchState state) => Board?.Videos.Count(v => v.State == state) ?? 0;
+
+    // Done is newest watched first; everything else newest upload first (the board arrives in that order).
+    private static int Order(Playthrough video) =>
+        video.State == WatchState.Done ? DateOnly.MaxValue.DayNumber - (video.WatchedOn?.DayNumber ?? 0) : 0;
+
+    private static string Empty(WatchState state) => state switch
+    {
+        WatchState.New => "New full-game uploads land here.",
+        WatchState.WatchNext => "Line up what to watch next.",
+        WatchState.InProgress => "Nothing in progress.",
+        WatchState.Done => "Finished videos land here.",
+        _ => "Nothing ignored.",
+    };
+
+    private async Task MoveAsync((Playthrough Video, WatchState State) move)
+    {
+        if (move.State == WatchState.Done)
+        {
+            rating = move.Video;
+            return;
+        }
+
+        await SaveAsync(() => Library.MoveAsync(move.Video.VideoId, new MoveRequest(move.State, null, Today)));
+    }
+
+    private async Task FinishDoneAsync(Playthrough video, decimal? stars)
+    {
+        rating = null;
+        await SaveAsync(() => Library.MoveAsync(video.VideoId, new MoveRequest(WatchState.Done, stars, Today)));
+    }
+
+    private Task RateAsync((Playthrough Video, decimal? Rating) rate) =>
+        SaveAsync(() => Library.RateAsync(rate.Video.VideoId, rate.Rating));
+
+    private async Task SaveAsync(Func<Task<Playthrough>> change)
+    {
+        message = null;
+        try
+        {
+            var saved = await change();
+            Board = Board! with { Videos = [.. Board.Videos.Select(v => v.VideoId == saved.VideoId ? saved : v)] };
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or KeyNotFoundException)
+        {
+            message = $"That change didn't save. {ex.Message}";
+        }
+    }
+
+    private async Task SyncAsync()
+    {
+        syncing = true;
+        message = null;
+        try
+        {
+            await Library.SyncAsync();
+            Board = await Library.GetBoardAsync();
+            now = Time.GetUtcNow();
+        }
+        catch (HttpRequestException ex)
+        {
+            message = $"The sync didn't run. {ex.Message}";
+        }
+        finally
+        {
+            syncing = false;
+        }
+    }
+}
