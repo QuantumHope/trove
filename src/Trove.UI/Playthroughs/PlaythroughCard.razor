@@ -28,7 +28,7 @@
                     @($"Watched {VideoFormat.Day(watched)}")
                 }
             </span>
-            <select class="trove-state-select" value="@Video.State" @onchange="OnMoveSelected" aria-label="@($"Move {title.Game} to")">
+            <select @key="selectVersion" class="trove-state-select" value="@Video.State" @onchange="OnMoveSelected" aria-label="@($"Move {title.Game} to")">
                 @foreach (var state in WatchStates.All)
                 {
                     <option value="@state">@state.Label()</option>
@@ -40,6 +40,10 @@
 
 @code {
     private (string Game, string? Details) title;
+
+    // Blazor leaves a select showing what was picked when the bound value didn't change (a cancelled rating prompt or a
+    // move that failed to save), so each pick rebuilds the select from the video's real state.
+    private int selectVersion;
 
     [Parameter, EditorRequired] public Playthrough Video { get; set; } = default!;
 
@@ -69,8 +73,12 @@
         yield return VideoFormat.Ago(Video.PublishedAt, Now);
     }
 
-    private Task OnMoveSelected(ChangeEventArgs e) =>
-        Enum.TryParse<WatchState>(e.Value?.ToString(), out var state) && state != Video.State
-            ? OnMove.InvokeAsync((Video, state))
-            : Task.CompletedTask;
+    private async Task OnMoveSelected(ChangeEventArgs e)
+    {
+        selectVersion++;
+        if (Enum.TryParse<WatchState>(e.Value?.ToString(), out var state) && state != Video.State)
+        {
+            await OnMove.InvokeAsync((Video, state));
+        }
+    }
 }

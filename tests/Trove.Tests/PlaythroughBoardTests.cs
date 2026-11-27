@@ -102,7 +102,8 @@ public sealed class PlaythroughBoardTests : BunitContext
 
         public Task<Playthrough> MoveAsync(string videoId, MoveRequest request, CancellationToken cancellationToken = default)
         {
-            Moves.Add((videoId, request));
+            Moves.Add((videoId, request with { Today = null }));
+            Assert.NotNull(request.Today);
             var v = videos[videoId];
             var (state, rating, watched) = PlaythroughRules.Move(v.State, v.Rating, v.WatchedOn, request, DateOnly.FromDateTime(DateTime.Today));
             return Task.FromResult(videos[videoId] = v with { State = state, Rating = rating, WatchedOn = watched });

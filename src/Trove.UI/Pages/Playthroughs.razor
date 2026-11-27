@@ -128,6 +128,9 @@ else if (Board.Sync.LastError is { } error)
         }
     }
 
+    // The browser's own date, so a watch late in the evening is recorded on the person's day, not the server's.
+    private DateOnly Today => DateOnly.FromDateTime(Time.GetLocalNow().DateTime);
+
     private int Count(WatchState state) => Board?.Videos.Count(v => v.State == state) ?? 0;
 
     // Done is newest watched first; everything else newest upload first (the board arrives in that order).
@@ -151,13 +154,13 @@ else if (Board.Sync.LastError is { } error)
             return;
         }
 
-        await SaveAsync(() => Library.MoveAsync(move.Video.VideoId, new MoveRequest(move.State, null)));
+        await SaveAsync(() => Library.MoveAsync(move.Video.VideoId, new MoveRequest(move.State, null, Today)));
     }
 
     private async Task FinishDoneAsync(Playthrough video, decimal? stars)
     {
         rating = null;
-        await SaveAsync(() => Library.MoveAsync(video.VideoId, new MoveRequest(WatchState.Done, stars)));
+        await SaveAsync(() => Library.MoveAsync(video.VideoId, new MoveRequest(WatchState.Done, stars, Today)));
     }
 
     private Task RateAsync((Playthrough Video, decimal? Rating) rate) =>

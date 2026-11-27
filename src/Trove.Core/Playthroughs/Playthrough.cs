@@ -34,6 +34,7 @@ public sealed record PlaythroughBoard(IReadOnlyList<Playthrough> Videos, SyncSta
 public sealed record SyncStatus(bool HasApiKey, IReadOnlyList<string> Channels, DateTimeOffset? LastSyncedAt, string? LastError);
 
 /// <summary>A move to another column, with the rating given at the same time (the prompt when moving to Done).</summary>
-public sealed record MoveRequest(WatchState State, decimal? Rating);
+/// <summary>A move to another column. <paramref name="Today"/> is the person's own date, recorded when the move is a watch.</summary>
+public sealed record MoveRequest(WatchState State, decimal? Rating, DateOnly? Today = null);
 
 public sealed record RateRequest(decimal? Rating);
