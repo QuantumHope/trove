@@ -1,0 +1,83 @@
+@using Trove.Core.Setup
+@inject ITroveSetup Setup
+@inject NavigationManager Navigation
+
+@* Asks for CORA's address when the module has none. It starts as this page's own site, since CORA serves Trove: that
+   is the right answer unless the module reaches CORA some other way. The module checks CORA answers there first. *@
+
+<div class="trove-dialog-backdrop" @onclick="Later">
+    <div class="trove-dialog trove-card trove-setup-dialog" role="dialog" aria-modal="true" aria-labelledby="trove-setup-title"
+         aria-describedby="trove-setup-why" @onclick:stopPropagation="true" @onkeydown="OnKey">
+        <div>
+            <h2 id="trove-setup-title">Where is CORA?</h2>
+            <p id="trove-setup-why" class="trove-dialog-video">
+                Trove's reading list needs CORA's address to get feed posts and to ask CORA about articles.
+                It's usually this site's address.
+            </p>
+        </div>
+        <form class="trove-setup-form" @onsubmit="Save" @onsubmit:preventDefault="true">
+            <label class="trove-field is-url">
+                <span class="trove-field-label">CORA's address</span>
+                <input id="cora-address" @bind="address" @bind:event="oninput" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+                       disabled="@busy" placeholder="https://cora.example.ts.net" />
+            </label>
+            @if (error is not null)
+            {
+                <p class="trove-setup-error" role="alert">@error</p>
+            }
+            <div class="trove-dialog-actions">
+                <button type="button" class="trove-button is-quiet" disabled="@busy" @onclick="Later">Later</button>
+                <button type="submit" class="trove-button is-primary" disabled="@(busy || string.IsNullOrWhiteSpace(address))">
+                    @(busy ? "Checking…" : "Save")
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@code {
+    private string address = "";
+    private string? error;
+    private bool busy;
+
+    /// <summary>Called once the address is saved.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    /// <summary>Called when the person closes it without saving.</summary>
+    [Parameter] public EventCallback OnLater { get; set; }
+
+    protected override void OnInitialized() => address = new Uri(Navigation.BaseUri).GetLeftPart(UriPartial.Authority);
+
+    private async Task Save()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            var result = await Setup.SaveCoraAddressAsync(address.Trim());
+            if (result.Saved)
+            {
+                await OnSaved.InvokeAsync();
+                return;
+            }
+
+            error = result.Error ?? "Trove couldn't reach CORA there.";
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            error = ex.Message;
+        }
+        catch (Exception ex) when (HttpTroveSetup.IsServerFailure(ex))
+        {
+            error = HttpTroveSetup.Describe(ex);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private Task Later() => busy ? Task.CompletedTask : OnLater.InvokeAsync();
+
+    private Task OnKey(KeyboardEventArgs e) => e.Key == "Escape" ? Later() : Task.CompletedTask;
+}

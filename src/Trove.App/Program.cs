@@ -9,6 +9,7 @@ using Trove.Core.Viewing;
 using Trove.UI;
 using Trove.UI.Articles;
 using Trove.UI.Playthroughs;
+using Trove.UI.Setup;
 using Trove.UI.Viewing;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -23,6 +24,7 @@ builder.Services.AddScoped(sp => new HttpClient(new CoraApiHandler(sp.GetRequire
 });
 builder.Services.AddScoped<IPlaythroughLibrary, HttpPlaythroughLibrary>();
 builder.Services.AddScoped<IArticleLibrary, HttpArticleLibrary>();
+builder.Services.AddScoped<ITroveSetup, HttpTroveSetup>();
 // CORA's own /web/frame-check (not the module's), root-relative on the same address.
 builder.Services.AddScoped<IFrameChecker, HttpFrameChecker>();
 
