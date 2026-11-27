@@ -128,6 +128,8 @@
     private bool rating;
     private bool ended;
     private WatchState? moved;
+    private bool autoMoved;
+    private bool disposed;
     private string unavailableTitle = "";
     private string unavailableDetail = "";
     private ElementReference host;
@@ -203,7 +205,15 @@
             self ??= DotNetObjectReference.Create(this);
             stage = PlayerStage.Playing;
             StateHasChanged();
-            player = await module.InvokeAsync<IJSObjectReference>("mount", host, video!.VideoId, self);
+            var mounted = await module.InvokeAsync<IJSObjectReference>("mount", host, video!.VideoId, resumeSeconds, self);
+            if (disposed)
+            {
+                // The page closed while YouTube's player was loading.
+                await TearDownAsync(mounted);
+                return;
+            }
+
+            player = mounted;
         }
         catch (JSException)
         {
@@ -215,8 +225,10 @@
     public async Task OnPlaying()
     {
         ended = false;
-        if (video is not null && moved is null && ReaderRules.OnPlay(video.State) is { } to)
+        // Only the first play moves it, so an undo sticks through pauses, seeks and buffering.
+        if (video is not null && !autoMoved && ReaderRules.OnPlay(video.State) is { } to)
         {
+            autoMoved = true;
             var from = video.State;
             if (await SaveAsync(() => Library.MoveAsync(video.VideoId, new MoveRequest(to, null, Today))))
             {
@@ -275,11 +287,19 @@
     {
         rating = false;
         moved = null;
-        if (await SaveAsync(() => Library.MoveAsync(video!.VideoId, new MoveRequest(WatchState.Done, stars, Today))) && module is not null)
+        if (await SaveAsync(() => Library.MoveAsync(video!.VideoId, new MoveRequest(WatchState.Done, stars, Today))))
         {
             try
             {
-                await module.InvokeVoidAsync("forget", video!.VideoId);
+                // The player's own finish() also stops it saving the spot again when the page closes.
+                if (player is not null)
+                {
+                    await player.InvokeVoidAsync("finish");
+                }
+                else if (module is not null)
+                {
+                    await module.InvokeVoidAsync("forget", video!.VideoId);
+                }
             }
             catch (JSException)
             {
@@ -308,23 +328,42 @@
 
     public async ValueTask DisposeAsync()
     {
-        try
+        disposed = true;
+        if (player is not null)
         {
-            if (player is not null)
-            {
-                await player.InvokeVoidAsync("dispose");
-                await player.DisposeAsync();
-            }
+            await TearDownAsync(player);
+        }
 
-            if (module is not null)
+        if (module is not null)
+        {
+            try
             {
                 await module.DisposeAsync();
             }
+            catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException)
+            {
+            }
+        }
+
+        self?.Dispose();
+    }
+
+    private static async Task TearDownAsync(IJSObjectReference handle)
+    {
+        try
+        {
+            await handle.InvokeVoidAsync("dispose");
         }
         catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException)
         {
         }
 
-        self?.Dispose();
+        try
+        {
+            await handle.DisposeAsync();
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or JSException or TaskCanceledException)
+        {
+        }
     }
 }

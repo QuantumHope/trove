@@ -62,16 +62,18 @@ export function forget(videoId) {
 }
 
 /**
- * Builds the player inside `host` and starts it. `dotnet` gets OnPlaying(), OnEnded() and OnPlayerError(code).
- * Returns a handle whose dispose() saves the position and tears the player down.
+ * Builds the player inside `host` and starts it at `startAt` seconds, the spot the page offered. `dotnet` gets
+ * OnPlaying(), OnEnded() and OnPlayerError(code). Returns a handle whose finish() forgets the saved spot for good
+ * and whose dispose() saves the position, unless the video finished, and tears the player down.
  */
-export async function mount(host, videoId, dotnet) {
+export async function mount(host, videoId, startAt, dotnet) {
     await loadApi();
 
     const target = document.createElement("div");
     host.replaceChildren(target);
     let timer;
     let gone = false;
+    let finished = false;
 
     const player = new window.YT.Player(target, {
         host: "https://www.youtube-nocookie.com",
@@ -80,7 +82,7 @@ export async function mount(host, videoId, dotnet) {
         height: "100%",
         playerVars: {
             autoplay: 1,
-            start: resumeAt(videoId),
+            start: startAt,
             rel: 0,
             playsinline: 1,
             origin: window.location.origin,
@@ -92,6 +94,7 @@ export async function mount(host, videoId, dotnet) {
                 }
                 const s = window.YT.PlayerState;
                 if (e.data === s.PLAYING) {
+                    finished = false;
                     dotnet.invokeMethodAsync("OnPlaying");
                     clearInterval(timer);
                     timer = setInterval(() => save(videoId, player.getCurrentTime()), 10000);
@@ -100,6 +103,7 @@ export async function mount(host, videoId, dotnet) {
                     save(videoId, player.getCurrentTime());
                 } else if (e.data === s.ENDED) {
                     clearInterval(timer);
+                    finished = true;
                     forget(videoId);
                     dotnet.invokeMethodAsync("OnEnded");
                 }
@@ -113,11 +117,16 @@ export async function mount(host, videoId, dotnet) {
     });
 
     return {
+        finish() {
+            finished = true;
+            clearInterval(timer);
+            forget(videoId);
+        },
         dispose() {
             gone = true;
             clearInterval(timer);
             try {
-                if (player.getCurrentTime) {
+                if (!finished && player.getCurrentTime) {
                     save(videoId, player.getCurrentTime());
                 }
                 player.destroy();

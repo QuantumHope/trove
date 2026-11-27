@@ -39,5 +39,10 @@ public sealed class HttpFrameChecker(HttpClient http) : IFrameChecker
         {
             return new FrameCheck(url, Framing.Unknown, ex.Message);
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient's own timeout.
+            return new FrameCheck(url, Framing.Unknown, "CORA took too long to check the page.");
+        }
     }
 }

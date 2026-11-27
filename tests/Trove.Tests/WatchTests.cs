@@ -40,6 +40,21 @@ public sealed class WatchTests : BunitContext
         var page = Open();
 
         page.WaitForAssertion(() => Assert.Contains("Pick up at 1:02:05", page.Find(".trove-player-hint").TextContent, StringComparison.Ordinal));
+
+        // The player starts where the button said.
+        page.Find(".trove-player-poster").Click();
+        Assert.Equal(3_725, module.Invocations.Single(i => i.Identifier == "mount").Arguments[2]);
+    }
+
+    [Fact]
+    public void A_spot_in_the_last_half_minute_starts_from_the_top()
+    {
+        module.Setup<int>("resumeAt", _ => true).SetResult(int.MaxValue / 2);
+        var page = Open();
+
+        page.Find(".trove-player-poster").Click();
+
+        Assert.Equal(0, module.Invocations.Single(i => i.Identifier == "mount").Arguments[2]);
     }
 
     [Fact]
@@ -58,9 +73,10 @@ public sealed class WatchTests : BunitContext
         page.Find(".trove-viewer-moved button").Click();
         Assert.Equal(("a", new MoveRequest(WatchState.New, null)), library.Moves[1]);
 
-        // Pausing and playing again doesn't move it a second time.
+        // The undo sticks: playing again after a pause or seek doesn't move it back.
         page.InvokeAsync(() => page.Instance.OnPlaying());
-        Assert.Equal(3, library.Moves.Count);
+        Assert.Equal(2, library.Moves.Count);
+        Assert.Empty(page.FindAll(".trove-viewer-moved"));
     }
 
     [Theory]

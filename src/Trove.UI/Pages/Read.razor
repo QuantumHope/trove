@@ -19,7 +19,7 @@
         {
             <div class="trove-banner is-error" role="alert">
                 <span>This article didn't load. @loadError</span>
-                <button type="button" class="trove-button" @onclick="LoadAsync">Try again</button>
+                <button type="button" class="trove-button" @onclick="OpenAsync">Try again</button>
             </div>
         }
         else if (missing)
@@ -127,7 +127,10 @@
     // CORA's library copy of the page, once it's in CORA's knowledge.
     private string? CoraCopy => article?.Cora is { Action: CoraAction.View } cora ? CoraLinks.For(cora) : null;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => OpenAsync();
+
+    // Load the article, decide how to show it, and move it to Reading. "Try again" runs all of it.
+    private async Task OpenAsync()
     {
         await LoadAsync();
         if (article is null)

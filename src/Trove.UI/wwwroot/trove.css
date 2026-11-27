@@ -555,7 +555,6 @@ h1:focus { outline: none; }
 }
 #blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: var(--space-md); }
 
-/* Below lg the tab strip drops its glyphs: the labels stay, since a glyph alone doesn't say where it goes. */
 /* The video player and article reader (ADR-132 in CORA). */
 .trove-main:has(.trove-viewer.is-video) { max-width: 1100px; }
 .trove-main:has(.trove-viewer.is-article) { max-width: 1200px; }
@@ -665,6 +664,7 @@ h1:focus { outline: none; }
 .trove-video-footer .trove-external { margin-left: auto; }
 .trove-video-footer .trove-external + .trove-state-select { margin-left: 0; }
 
+/* Below lg the tab strip drops its glyphs: the labels stay, since a glyph alone doesn't say where it goes. */
 @media (max-width: 1023px) {
     .trove-topnav-tab { padding: 0 var(--space-md); }
     .trove-topnav-tab .trove-nav-glyph { display: none; }

@@ -52,6 +52,20 @@ public sealed class ReaderTests : BunitContext
     }
 
     [Fact]
+    public void Try_again_after_a_failed_load_opens_the_article_fully()
+    {
+        library.LoadFailure = "CORA is restarting.";
+        var page = Open("saved");
+        Assert.Contains("didn't load", page.Find("[role=alert]").TextContent, StringComparison.Ordinal);
+
+        library.LoadFailure = null;
+        page.Find("[role=alert] button").Click();
+
+        Assert.Equal("https://example.com/saved", page.Find(".trove-reader-frame iframe").GetAttribute("src"));
+        Assert.Equal(ReadState.Reading, library.Moves.Single().Request.State);
+    }
+
+    [Fact]
     public void An_article_already_being_read_isnt_moved_and_can_be_marked_read()
     {
         library.Extra = ArticleBoardTests.Saved("reading", "https://example.com/r", "Halfway", ReadState.Reading);
@@ -129,6 +143,9 @@ public sealed class ReaderRulesTests
     [InlineData("https://example.com/a", null)]
     [InlineData("http://example.com/a", "isn't served over https")]
     [InlineData("https://cora.tail.ts.net/knowledge/library/1", "part of CORA")]
+    [InlineData("https://CORA.tail.ts.net:443/knowledge/library/1", "part of CORA")]
+    [InlineData("https://someone@cora.tail.ts.net/admin", "carries a sign-in")]
+    [InlineData("https://cora.tail.ts.net:8443/other-app", null)]
     [InlineData("ftp://example.com/a", "isn't a web page")]
     [InlineData("not a link", "isn't a web page")]
     public void Trove_frames_only_https_pages_on_other_sites(string url, string? reason)
@@ -188,6 +205,33 @@ public sealed class HttpFrameCheckerTests
         Assert.Equal(Framing.Unknown, a.Framing);
         Assert.Contains("private network", a.Reason, StringComparison.Ordinal);
         Assert.Equal(Framing.Unknown, b.Framing);
+    }
+
+    [Fact]
+    public async Task An_answer_without_a_verdict_is_unknown()
+    {
+        var checker = new HttpFrameChecker(new HttpClient(new Handler(HttpStatusCode.OK, """{"url":"https://example.com/a"}""")) { BaseAddress = new Uri("https://cora.example/trove/") });
+
+        Assert.Equal(Framing.Unknown, (await checker.CheckAsync("https://example.com/a")).Framing);
+    }
+
+    [Fact]
+    public async Task A_check_that_takes_too_long_is_unknown()
+    {
+        var checker = new HttpFrameChecker(new HttpClient(new Hanging()) { BaseAddress = new Uri("https://cora.example/trove/"), Timeout = TimeSpan.FromMilliseconds(50) });
+
+        var check = await checker.CheckAsync("https://example.com/a");
+
+        Assert.Equal(Framing.Unknown, check.Framing);
+    }
+
+    private sealed class Hanging : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            throw new InvalidOperationException("unreachable");
+        }
     }
 
     private sealed class Handler(HttpStatusCode? status, string body) : HttpMessageHandler

@@ -6,14 +6,17 @@ namespace Trove.Core.Viewing;
 [JsonConverter(typeof(JsonStringEnumConverter<Framing>))]
 public enum Framing
 {
+    /// <summary>
+    /// CORA couldn't tell, so the reader tries the frame and offers a new tab beside it. First, so an answer that
+    /// leaves the value out reads as Unknown rather than Allowed.
+    /// </summary>
+    Unknown,
+
     /// <summary>Nothing the page sent forbids it.</summary>
     Allowed,
 
     /// <summary>The site forbids it, or a browser would refuse it (plain http).</summary>
     Blocked,
-
-    /// <summary>CORA couldn't tell, so the reader tries the frame and offers a new tab beside it.</summary>
-    Unknown,
 }
 
 /// <summary>CORA's answer from <c>GET /web/frame-check</c>.</summary>
@@ -42,7 +45,14 @@ public static class ReaderRules
             return "This link isn't a web page Trove can show.";
         }
 
-        if (string.Equals(address.GetLeftPart(UriPartial.Authority), appAddress.GetLeftPart(UriPartial.Authority), StringComparison.OrdinalIgnoreCase))
+        // A name or password in the link would hide which site it is, and browsers won't send them to a frame anyway.
+        if (address.UserInfo.Length > 0)
+        {
+            return "This link carries a sign-in, so it opens in its own tab.";
+        }
+
+        // Scheme, host and port only: the same site whatever else the link carries.
+        if (Uri.Compare(address, appAddress, UriComponents.SchemeAndServer, UriFormat.Unescaped, StringComparison.OrdinalIgnoreCase) == 0)
         {
             return "This page is part of CORA, so it opens in its own tab.";
         }
