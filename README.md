@@ -21,6 +21,26 @@ keeps the videos each channel's rule allows (full games only, not "Part 3" uploa
 Ignored. Videos in progress or done take a 0.25 to 5 star rating; moving one to Done asks for the rating and records
 the date. Each CORA account has its own board.
 
+## Desktop window
+
+`src/Trove.Desktop` is a desktop window for Trove, like the other HopeLab apps: it opens your CORA's `/trove/` in a
+native window, so Trove gets its own icon and taskbar entry. The first start asks for CORA's address (such as
+`https://cora.your-tailnet.ts.net`) and checks that CORA serves Trove there. Change it later under
+**Settings → This window → Change CORA address…** in Trove.
+
+When CORA can't be reached, the window still opens Trove and shows the last board it saw, with a strip under the header
+that says how old it is. Changes don't save until CORA answers again. Before Trove has opened once, there's no saved
+copy, so the window says CORA can't be reached and offers **Try again**.
+
+```bash
+dotnet run --project src/Trove.Desktop
+```
+
+It keeps its files in `~/.trove` (or the folder in `TROVE_HOME`): `desktop.json` for the address and theme, and
+`webview/` for the web view's storage, where the saved board lives. It uses each system's own web view: WebView2 on
+Windows (part of Windows 10 and 11), WebKit on macOS, and WebKitGTK or WPE WebKit on Linux, which may need installing
+(`libwebkitgtk-6.0-4` on Debian and Ubuntu).
+
 ## YouTube API key
 
 CORA's Trove module reads channels with the YouTube Data API v3, which needs a free API key. It stays on the CORA
@@ -41,6 +61,7 @@ server and is never committed.
 dotnet build Trove.slnx
 dotnet test Trove.slnx
 dotnet publish src/Trove.App -c Release -o artifacts/trove
+dotnet run --project src/Trove.Desktop
 ```
 
 Point CORA at the published app by setting `Trove:StaticFilesPath` on `cora-api` to `artifacts/trove/wwwroot` (the

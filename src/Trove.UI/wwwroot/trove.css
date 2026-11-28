@@ -753,3 +753,11 @@ h1:focus { outline: none; }
     .trove-viewer-actions .trove-button { flex: 1 1 auto; justify-content: center; }
     .trove-reader-frame { height: calc(100dvh - 345px); min-height: 360px; border-radius: 8px; }
 }
+
+/* Offline strip: under the header while CORA can't be reached. */
+.trove-offline-slot:empty { display: none; }
+.trove-offline { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-xs) var(--space-md); background: color-mix(in srgb, var(--accent-yellow) 12%, var(--surface-elevated)); border-bottom: 1px solid color-mix(in srgb, var(--accent-yellow) 45%, transparent); }
+.trove-offline-mark { flex: none; color: var(--accent-yellow); font-weight: var(--type-label-weight); }
+.trove-offline-text { flex: 1 1 auto; margin: 0; font-size: var(--type-label-size); }
+.trove-offline .trove-button { flex: none; }
+@media (max-width: 767px) { .trove-offline { padding: var(--space-xs) var(--space-sm); } }

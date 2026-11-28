@@ -1,0 +1,34 @@
+@implements IDisposable
+@inject ConnectionStatus Status
+@inject TimeProvider Clock
+@inject NavigationManager Navigation
+
+@* A strip under the header while CORA can't be reached. It says how old the screen is, so nobody mistakes a saved
+   board for today's, and that changes won't save until CORA answers again. The live region is always there, empty while
+   online, so a screen reader hears the change both ways. *@
+<div class="trove-offline-slot" role="status" aria-live="polite">
+    @if (Status.IsOffline)
+    {
+        <div class="trove-offline">
+            <span class="trove-offline-mark" aria-hidden="true">◌</span>
+            <p class="trove-offline-text">@Message</p>
+            <button type="button" class="trove-button is-quiet" @onclick="TryAgain">Try again</button>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The words on the strip, worked out from the status so the tests can check them.</summary>
+    internal string Message => Status.SavedAt is { } saved
+        ? $"CORA can't be reached, so this is what Trove saved {ConnectionStatus.Describe(saved, Clock.GetUtcNow(), Clock.LocalTimeZone)}. Changes won't save until it's back."
+        : "CORA can't be reached right now. Changes won't save until it's back.";
+
+    protected override void OnInitialized() => Status.Changed += OnChanged;
+
+    private void OnChanged() => _ = InvokeAsync(StateHasChanged);
+
+    // A fresh load asks CORA again for everything on the page; the service worker still answers if it's gone.
+    private void TryAgain() => Navigation.Refresh(forceReload: true);
+
+    public void Dispose() => Status.Changed -= OnChanged;
+}

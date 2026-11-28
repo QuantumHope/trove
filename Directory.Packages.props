@@ -3,6 +3,17 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.15" />
     <!-- The shared HopeLab themes. Trove only takes the CSS from the package (see src/Trove.UI/Trove.UI.csproj). -->
     <PackageVersion Include="MattEland.HopeLab.Themes" Version="0.1.*" />
+    <!-- The desktop window (src/Trove.Desktop). Versions match the HopeLab Bench's and OneRing's, so the Avalonia apps
+         move together. -->
+    <PackageVersion Include="Avalonia" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Desktop" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Headless" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Skia" Version="12.0.4" />
+    <PackageVersion Include="Avalonia.Controls.WebView" Version="12.1.2" />
+    <PackageVersion Include="ReactiveUI" Version="23.2.28" />
+    <PackageVersion Include="ReactiveUI.Avalonia" Version="12.0.3" />
+    <PackageVersion Include="MattEland.HopeLab.Common" Version="0.1.*" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />

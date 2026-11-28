@@ -1,10 +1,26 @@
 @page "/settings"
 @implements IDisposable
 @inject ITroveSetup Setup
+@inject DesktopShell Shell
 
 <PageTitle>Settings · Trove</PageTitle>
 
 <h1>Settings</h1>
+
+@if (desktop is { } window)
+{
+    <section class="trove-card trove-settings" aria-labelledby="window-heading">
+        <h2 id="window-heading">This window</h2>
+        <p class="trove-settings-text">
+            The Trove desktop window opens Trove from <strong>@window.Origin</strong>. When CORA can't be reached, it shows
+            the last board it saved.
+        </p>
+        <div class="trove-setup-actions">
+            <a class="trove-button" href="@DesktopShell.ChangeAddressPath">Change CORA address…</a>
+        </div>
+        <p class="trove-settings-source">Trove desktop @window.Version</p>
+    </section>
+}
 
 <section class="trove-card trove-settings" aria-labelledby="cora-heading">
     <h2 id="cora-heading">CORA</h2>
@@ -62,11 +78,13 @@
     private SetupStatus? status;
     private string? error;
     private bool askingAddress;
+    private DesktopInfo? desktop;
 
-    protected override Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
         Setup.Changed += OnSetupChanged;
-        return LoadAsync();
+        desktop = await Shell.GetAsync();
+        await LoadAsync();
     }
 
     private async Task LoadAsync()

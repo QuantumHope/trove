@@ -8,6 +8,8 @@ using Trove.Core.Playthroughs;
 using Trove.Core.Viewing;
 using Trove.UI;
 using Trove.UI.Articles;
+using Trove.UI.Connection;
+using Trove.UI.Desktop;
 using Trove.UI.Playthroughs;
 using Trove.UI.Setup;
 using Trove.UI.Viewing;
@@ -18,10 +20,16 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddSingleton(TimeProvider.System);
 // The base address is /trove/, so "api/playthroughs" lands on CORA's /trove/api/playthroughs.
-builder.Services.AddScoped(sp => new HttpClient(new CoraApiHandler(sp.GetRequiredService<NavigationManager>()) { InnerHandler = new HttpClientHandler() })
+// One status for the whole app: the banner reads it, the handler under the CORA handler keeps it current.
+builder.Services.AddSingleton<ConnectionStatus>();
+builder.Services.AddScoped(sp => new HttpClient(new CoraApiHandler(sp.GetRequiredService<NavigationManager>())
+{
+    InnerHandler = new ConnectionHandler(sp.GetRequiredService<ConnectionStatus>()) { InnerHandler = new HttpClientHandler() },
+})
 {
     BaseAddress = new Uri(builder.HostEnvironment.BaseAddress),
 });
+builder.Services.AddScoped<DesktopShell>();
 builder.Services.AddScoped<IPlaythroughLibrary, HttpPlaythroughLibrary>();
 builder.Services.AddScoped<IArticleLibrary, HttpArticleLibrary>();
 builder.Services.AddScoped<ITroveSetup, HttpTroveSetup>();

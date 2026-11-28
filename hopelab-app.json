@@ -1,7 +1,34 @@
 {
-  "$comment": "Read by the HopeLab Bench for its launch buttons. Trove runs inside CORA (served at /trove/), so it has a publish task rather than a server to start.",
+  "$comment": "Read by the HopeLab Bench for its launch buttons. Trove's data and server live in CORA (served at /trove/); the desktop window opens a CORA's /trove and keeps the last board for when CORA can't be reached.",
   "launch": [
-    { "name": "Publish for CORA", "command": ["dotnet", "publish", "src/Trove.App", "-c", "Release", "-o", "artifacts/trove"], "kind": "task", "default": true },
-    { "name": "Tests", "command": ["dotnet", "test", "Trove.slnx"], "kind": "task" }
+    {
+      "name": "Trove desktop",
+      "command": ["dotnet", "run", "--project", "src/Trove.Desktop/Trove.Desktop.csproj"],
+      "default": true,
+      "exclusive": true,
+      "requires": [".NET SDK"]
+    },
+    {
+      "name": "Publish for CORA",
+      "command": ["dotnet", "publish", "src/Trove.App", "-c", "Release", "-o", "artifacts/trove"],
+      "kind": "task",
+      "requires": [".NET SDK"]
+    },
+    {
+      "name": "Tests",
+      "command": ["dotnet", "test", "Trove.slnx"],
+      "kind": "task",
+      "requires": [".NET SDK"]
+    }
+  ],
+  "prerequisites": [
+    {
+      "name": ".NET SDK",
+      "tool": "dotnet",
+      "minVersion": "10.0.100",
+      "why": "Trove and its desktop window target .NET 10",
+      "docs": "https://dotnet.microsoft.com/download/dotnet/10.0",
+      "install": { "windows": ["winget", "install", "--id", "Microsoft.DotNet.SDK.10", "--exact"] }
+    }
   ]
 }

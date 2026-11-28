@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Trove.Core.Setup;
+using Trove.UI.Connection;
+using Trove.UI.Desktop;
 using Trove.UI.Layout;
 using Trove.UI.Pages;
 using Trove.UI.Setup;
@@ -14,6 +16,9 @@ public sealed class SetupTests : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose;
         JSInterop.Setup<string?>("trove.theme.get").SetResult("light");
         JSInterop.Setup<bool>("trove.theme.systemDark").SetResult(false);
+        Services.AddSingleton(TimeProvider.System);
+        Services.AddSingleton<ConnectionStatus>();
+        Services.AddScoped<DesktopShell>();
     }
 
     [Fact]

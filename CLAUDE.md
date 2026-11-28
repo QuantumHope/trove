@@ -20,6 +20,8 @@ what is set and reads it again after a save (`ITroveSetup.Changed`).
 dotnet build Trove.slnx
 dotnet test Trove.slnx
 dotnet publish src/Trove.App -c Release -o artifacts/trove   # set Trove:StaticFilesPath on cora-api to artifacts/trove/wwwroot
+dotnet run --project src/Trove.Desktop                       # the desktop window
+TROVE_SCREENSHOTS=docs/screenshots/desktop dotnet test tests/Trove.Desktop.Tests --filter RenderTests
 ```
 
 ## Layout
@@ -33,11 +35,23 @@ dotnet publish src/Trove.App -c Release -o artifacts/trove   # set Trove:StaticF
   can reuse it later. Put new screens and components here. `HttpPlaythroughLibrary` calls `api/playthroughs`, which is
   CORA's `/trove/api/playthroughs`. Links into CORA (such as `CoraLinks.Modules`) are root-relative, since CORA and
   Trove share an address.
+- `src/Trove.Desktop` is the desktop window (Avalonia 12 and `Avalonia.Controls.WebView`, the HopeLab Bench's
+  stack). It opens `{CORA}/trove/` in the system's web view and has only two screens of its own, connect and offline;
+  `ShellViewModel` holds the whole flow and `MainWindow.axaml.cs` only wires the web view to it. It adds
+  `TroveDesktop/<version>` to the user agent, which `Trove.UI`'s `DesktopShell` reads (`desktop.js`) to show the
+  "This window" card on Settings. That card links to `desktop/change-cora-address`; the window catches the link
+  (`ShellRoutes.ChangeAddress`) and shows its connect screen. Keep the two paths in step. Settings live in
+  `~/.trove/desktop.json` (`TROVE_HOME` moves the folder); the web view's storage, with the saved board, in
+  `~/.trove/webview`. Links that open a new tab go to the system browser.
+- Offline: `service-worker.js` answers a failed `/api/` read from its last copy and marks it with `X-Trove-Saved-At`.
+  `ConnectionHandler` (under `CoraApiHandler`) feeds `ConnectionStatus`, which `OfflineBanner` shows under the header,
+  and turns "Failed to fetch" into a sentence. This works for the phone PWA too.
 - `src/Trove.Core` holds the model and the rules that need no UI (watch states, star ratings, the full-game title
   filter, what a move does to the rating and watched date). CORA's module keeps a copy of the wire types and rules; keep
   the two in step.
 - `tests/Trove.Tests` covers the theme catalog against the shared package, the layout and the board with bUnit, and the
-  rules.
+  rules. `tests/Trove.Desktop.Tests` covers the window's flow, address parsing and settings, and renders its screens
+  headlessly to PNGs (`RenderTests`).
 
 ## Decisions already made
 

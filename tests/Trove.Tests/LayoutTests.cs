@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Trove.Core.Setup;
 using Trove.UI.Setup;
+using Trove.UI.Connection;
+using Trove.UI.Desktop;
 using Trove.UI.Layout;
 using Trove.UI.Theming;
 
@@ -19,6 +21,9 @@ public sealed class LayoutTests : BunitContext
         JSInterop.SetupVoid("trove.theme.focusChecked", _ => true).SetVoidResult();
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddSingleton<ITroveSetup>(new FakeSetup(new SetupStatus(true, true, 1)));
+        Services.AddSingleton(TimeProvider.System);
+        Services.AddSingleton<ConnectionStatus>();
+        Services.AddScoped<DesktopShell>();
     }
 
     [Fact]

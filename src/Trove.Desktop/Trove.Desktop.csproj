@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Trove desktop window: a native Avalonia window that opens a CORA's /trove in a web view, like the Tableside
+       window does for /tableside. Trove's data stays in CORA; the window's own screens are the connect screen and the
+       offline screen. When CORA can't be reached, Trove's service worker shows the last board this window saw. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>Trove.Desktop</RootNamespace>
+    <AssemblyName>TroveDesktop</AssemblyName>
+    <Version>0.1.0</Version>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationIcon>Assets\trove.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Controls.WebView" />
+    <PackageReference Include="MattEland.HopeLab.Themes" />
+    <PackageReference Include="MattEland.HopeLab.Common" />
+    <PackageReference Include="ReactiveUI" />
+    <PackageReference Include="ReactiveUI.Avalonia" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Trove.Desktop.Tests" />
+  </ItemGroup>
+</Project>
